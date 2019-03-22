@@ -40,7 +40,7 @@ class C51():
         self.dz = (self.config.Vmax - self.config.Vmin)/(self.config.nAtoms-1)
         self.z = np.arange(self.config.nAtoms) * self.dz + self.config.Vmin
 
-    def observe(self, x, a, r, nx, terminal, alpha, bonus):
+    def observe(self, x, a, r, nx, terminal, lr, bonus):
         '''
             Observe the (x, a, r, nx, terminal) and update the distribution
             toward the target distribution
@@ -49,7 +49,7 @@ class C51():
             r -- float, reward
             nx -- int, next state
             terminal -- bool, if terminal
-            alpha -- learning rate
+            lr -- learning rate
             bonus -- amount of bonus given, usually C/sqrt(count)
 
         '''
@@ -58,7 +58,7 @@ class C51():
             Q_nx = np.sum(self.p[nx, :, :] * self.z, axis=1)
             a_star = np.argmax(Q_nx)
         else: # take the argmax of CVaR
-            Q_nx = self.CVaR(x, alpha, N=self.config.CVaRSamples)
+            Q_nx = self.CVaR(x, self.config.args.alpha, N=self.config.CVaRSamples)
             a_star = np.argmax(Q_nx)
 
         m = np.zeros(self.config.nAtoms) #target distribution
@@ -96,7 +96,7 @@ class C51():
                 m[u] = (b-l)
 
         # Learning with learning rate
-        self.p[x, a, :] = self.p[x, a, :] + alpha * (m - self.p[x, a, :])
+        self.p[x, a, :] = self.p[x, a, :] + lr * (m - self.p[x, a, :])
         # Map back to a probability distribtuion, sum = 1
         self.p[x, a, :] /= np.sum(self.p[x, a, :])
 

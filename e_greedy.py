@@ -8,12 +8,12 @@ from utils import utils
 import argparse
 
 parser = argparse.ArgumentParser(description='Argumens Parser')
-parser.add_argument("--name", default= 'results/cvar_opt', help='directory and prefix name for saving')
+parser.add_argument("--name", default= 'results/e_greedy', help='directory and prefix name for saving')
 parser.add_argument("--trial", default=5, type=int, help='number of trials')
-parser.add_argument("--opt", default=1.0, type=float, help='optimism constant')
 parser.add_argument("--alpha", default=0.25, type=float, help='CVaR risk value')
 parser.add_argument("--env", default='mrp', help='envinronment')
 parser.add_argument("--num_episode", type=int, default=100, help='number of episodes')
+
 
 def main(args, version):
     # Envinronments
@@ -27,34 +27,37 @@ def main(args, version):
 
     # Make C51 Agent for evaluation and learning
     c51 = drl.C51(config, init='random',ifCVaR=True)
-    if config.eval:
+    if config.e_greedy_eval:
         c51_eval = drl.C51(config, init='random', ifCVaR=True)
     # init counts
-    counts = np.zeros((world.nS, world.nA)) + 1 # 1 for all state-action pair
     num_evaluations = int(config.args.num_episode/ (config.eval_episode * 1.0))
     returns_online = np.zeros((num_evaluations, config.eval_trial))
-    if config.eval:
+    if config.e_greedy_eval:
         returns_eval = np.zeros((num_evaluations, config.eval_trial))
 
     for ep in range(config.args.num_episode):
         terminal = False
         lr = config.get_lr(ep)
+        epsilon = config.get_epsilon(ep)
 
         # init world
         o = world.reset()
 
         # simulate
         while not terminal:
-            values = c51.CVaRopt(o, counts, c=args.opt, alpha=args.alpha, N=config.CVaRSamples)
-            a = np.random.choice(np.flatnonzero(values == values.max()))
+            if np.random.rand() <= epsilon:
+                a = np.random.randint(world.nA)
+            else:
+                values = c51.CVaR(o, alpha=args.alpha, N=config.CVaRSamples)
+                a = np.argmax(values)
+                #a = np.random.choice(np.flatnonzero(values == values.max()))
             no, r, terminal = world.step(a)
-            counts[o, a] += 1
 
             # update
-            c51.observe(o, a, r, no, terminal, alpha=lr, bonus=args.opt/np.sqrt(counts[o,a]))
+            c51.observe(o, a, r, no, terminal, lr=lr, bonus=0.0)
             # Eval
-            if config.eval:
-                c51_eval.observe(o, a, r, no, terminal, lr, bonus=0.0)
+            if config.e_greedy_eval:
+                c51_eval.observe(o, a, r, no, terminal, lr=lr, bonus=0.0)
 
             # Go to next observation! I always forget this!
             o = no
@@ -63,8 +66,8 @@ def main(args, version):
         if ep%config.eval_episode == 0:
             eval_num = ep // config.eval_episode
             returns_online[eval_num, :] = utils.eval(world, c51, config.eval_trial, config)
-            if config.eval:
-                returns_eval[eval_num, :] = utils.eval(world, c51_eval, config.eval_trial, config.gamma)
+            if config.e_greedy_eval:
+                returns_eval[eval_num, :] = utils.eval(world, c51_eval, config.eval_trial, config)
 
         # Save:
         if ep%config.save_episode == 0:
@@ -72,12 +75,11 @@ def main(args, version):
                     %(ep, config.args.num_episode, version))
 
             np.save(args.name + '_results_online_%d.npy'%(version), returns_online)
-            if config.eval:
+            if config.e_greedy_eval:
                 np.save(args.name + '_results_eval_%d.npy'%(version), returns_eval)
             np.save(args.name + '_c51_p.npy', c51.p)
-            np.save(args.name + '_c51_counts.npy', counts)
-            if config.eval:
-                np.save(args.name + '_c51_eval_o.npy', c51_eval.p)
+            if config.e_greedy_eval:
+                np.save(args.name + '_c51_eval_p.npy', c51_eval.p)
 
 
 if __name__ == "__main__":
@@ -85,3 +87,4 @@ if __name__ == "__main__":
     for i in range(int(args.trial)):
         print('Trial: %d out of %d'%(i, args.trial))
         main(args=args, version=i)
+
