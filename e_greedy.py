@@ -13,7 +13,8 @@ parser.add_argument("--trial", default=5, type=int, help='number of trials')
 parser.add_argument("--alpha", default=0.25, type=float, help='CVaR risk value')
 parser.add_argument("--env", default='mrp', help='envinronment')
 parser.add_argument("--num_episode", type=int, default=100, help='number of episodes')
-
+parser.add_argument("--egreedy", type=bool, default=True)
+parser.add_argument("--option", type=int, default=1, help='e greedy scheduele')
 
 def main(args, version):
     # Envinronments

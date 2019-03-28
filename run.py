@@ -51,7 +51,7 @@ def main(args, version):
             counts[o, a] += 1
 
             # update
-            c51.observe(o, a, r, no, terminal, alpha=lr, bonus=args.opt/np.sqrt(counts[o,a]))
+            c51.observe(o, a, r, no, terminal, lr=lr, bonus=args.opt/np.sqrt(counts[o,a]))
             # Eval
             if config.eval:
                 c51_eval.observe(o, a, r, no, terminal, lr, bonus=0.0)
@@ -74,10 +74,10 @@ def main(args, version):
             np.save(args.name + '_results_online_%d.npy'%(version), returns_online)
             if config.eval:
                 np.save(args.name + '_results_eval_%d.npy'%(version), returns_eval)
-            np.save(args.name + '_c51_p.npy', c51.p)
-            np.save(args.name + '_c51_counts.npy', counts)
+            np.save(args.name + '_c51_p_%d.npy'%(version), c51.p)
+            np.save(args.name + '_c51_counts_%d.npy'%(version), counts)
             if config.eval:
-                np.save(args.name + '_c51_eval_o.npy', c51_eval.p)
+                np.save(args.name + '_c51_eval_o_%d.npy'%(version), c51_eval.p)
 
 
 if __name__ == "__main__":

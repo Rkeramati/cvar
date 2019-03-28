@@ -22,10 +22,14 @@ class Config():
         self.save_episode = 100 # Save episode
         self.e_greedy_eval = True # Evaluation for e-greedy
 
+        self.schedule = {1: [0.9, 0.1, 4], 2: [0.9, 0.05, 5], 3: [0.9, 0.3, 4],\
+                4: [0.9, 0.05, 2], 5:[0.9, 0.05, 10], 6:[0.9, 0.05, 20], 7:[0.9, 0.05, 15]}
+
     def set(self, args):
         # Set the input configs
         self.args = args # for input values
-
+        if self.args.egreedy:
+            self.max_e, self.min_e, self.episode_ratio = self.schedule[self.args.option]
     def get_lr(self, ep):
         slope = (-self.max_lr + self.min_lr)/(self.args.num_episode/self.episode_ratio)
         alpha = max(self.min_lr, self.max_lr + ep *slope)
