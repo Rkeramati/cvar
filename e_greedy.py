@@ -3,6 +3,7 @@ import numpy as np
 from core import drl
 from config import *
 from env import mrp # machine repair
+from env import terrain as tr
 from utils import utils
 
 import argparse
@@ -20,11 +21,17 @@ def main(args, version):
     # Envinronments
     if args.env == 'mrp':
         world = mrp.machine_repair()
+    elif args.env == '2D':
+        world = tr.Nav2D(random=False)
     else:
         raise Exception("Envinronment not understood")
+
     # Config file
     config = Config(world.nS, world.nA)
     config.set(args)
+
+    if config.save_p: #Saving P matrix along the learning
+        save_p_ep = int(args.num_episode/ config.save_p_total)
 
     # Make C51 Agent for evaluation and learning
     c51 = drl.C51(config, init='random',ifCVaR=True)
@@ -81,6 +88,13 @@ def main(args, version):
             np.save(args.name + '_c51_p.npy', c51.p)
             if config.e_greedy_eval:
                 np.save(args.name + '_c51_eval_p.npy', c51_eval.p)
+        # Save p matrix along the way
+        if config.save_p:
+            if ep%save_p_ep == 0:
+                print('Saving P Mateirx, episode = %d'%(ep))
+                np.save(args.name + '_c51_p_%d_%d.npy'%(version, ep//save_p_ep), c51.p)
+                if config.eval:
+                    np.save(args.name + '_c51_eval_p_%d_%d.npy'%(version, ep//save_p_ep), c51_eval.p)
 
 
 if __name__ == "__main__":
