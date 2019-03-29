@@ -9,7 +9,7 @@ class Config():
         self.nAtoms = 51 # nAtoms for C51
         self.nS = nS
         self.nA = nA
-        self.gamma = 0.95 # Discount Factor
+        self.gamma = 1 # Discount Factor
         self.max_e = 0.9 # Exploration max epsilon
         self.min_e = 0.1
         self.max_lr = 0.9 # Maximum learnig rate

@@ -57,8 +57,8 @@ def main(args, version):
                 a = np.random.randint(world.nA)
             else:
                 values = c51.CVaR(o, alpha=args.alpha, N=config.CVaRSamples)
-                a = np.argmax(values)
-                #a = np.random.choice(np.flatnonzero(values == values.max()))
+                #a = np.argmax(values)
+                a = np.random.choice(np.flatnonzero(values == values.max()))
             no, r, terminal = world.step(a)
 
             # update
