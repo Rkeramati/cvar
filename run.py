@@ -70,7 +70,8 @@ def main(args, version):
         # To evaluate the CVaR, we need the return distribution
         if ep%config.eval_episode == 0:
             eval_num = ep // config.eval_episode
-            returns_online[eval_num, :] = utils.eval(world, c51, config.eval_trial, config)
+            # For online evaluation, counts and optimism bonus should be passed
+            returns_online[eval_num, :] = utils.eval_opt(world, c51, counts, config.eval_trial, config)
             if config.eval:
                 returns_eval[eval_num, :] = utils.eval(world, c51_eval, config.eval_trial, config.gamma)
 
