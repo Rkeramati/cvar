@@ -31,6 +31,7 @@ class Config():
     def set(self, args):
         # Set the input configs
         self.args = args # for input values
+        self.gamma = args.gamma # Gamma added as an option
         if self.args.egreedy:
             self.max_e, self.min_e, self.episode_ratio = self.schedule[self.args.option]
     def get_lr(self, ep):

@@ -16,6 +16,7 @@ parser.add_argument("--alpha", default=0.25, type=float, help='CVaR risk value')
 parser.add_argument("--env", default='mrp', help='envinronment')
 parser.add_argument("--num_episode", type=int, default=100, help='number of episodes')
 parser.add_argument("--egreedy", type=bool, default=False, help='If egreedy')
+parser.add_argument("--gamma", type=float, default=0.99, help="gamma")
 
 def main(args, version):
     # Envinronments

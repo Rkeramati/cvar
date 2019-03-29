@@ -16,6 +16,7 @@ parser.add_argument("--env", default='mrp', help='envinronment')
 parser.add_argument("--num_episode", type=int, default=100, help='number of episodes')
 parser.add_argument("--egreedy", type=bool, default=True)
 parser.add_argument("--option", type=int, default=1, help='e greedy scheduele')
+parser.add_argument("--gamma", type=float, default=0.99, help='gamma')
 
 def main(args, version):
     # Envinronments
