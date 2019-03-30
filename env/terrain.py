@@ -11,7 +11,7 @@ class Nav2D():
         self.action_space = ["UP", "RI", "DO", "LE"]
         self.nA = len(self.action_space)
         # Width and Heigth of the map
-        self.maxX = 16
+        self.maxX = 15
         self.maxY = 13
         self.nS = self.maxX * self.maxY #Number of states
 
@@ -21,12 +21,12 @@ class Nav2D():
         self.numObstacles = 15
 
         self.gamma = 0.95
-        self.delta = 0.3
+        self.delta = 0.05
         self.M = 2/(1-self.gamma)
 
         # Initial and Goal state
-        self.initial_state = (14, 11)
-        self.goal_state = (14, 2)
+        self.initial_state = (14, 12)
+        self.goal_state = (14, 1)
 
         if random:
             self.obstacles = self.random_obstacles()
@@ -65,11 +65,16 @@ class Nav2D():
         # Makes handcoded obstacles and return then matrix:
         obstacles = np.zeros((self.maxX, self.maxY))
 
+        obstacles[13, 2] = 1
+        obstacles[13, 3] = 1
+        obstacles[13, 4] = 1
         obstacles[13, 7] = 1
         obstacles[13, 6] = 1
         obstacles[13, 5] = 1
         obstacles[13, 9] = 1
         obstacles[13, 8] = 1
+        obstacles[13, 10] = 1
+
         obstacles[11, 4] = 1
         obstacles[11, 3] = 1
         obstacles[11, 8] = 1
