@@ -19,6 +19,7 @@ def eval(world, c51, trial, config):
 
 def eval_opt(world, c51, counts, trial, config):
     # Policy Evaluation with c51, CVaR optimization
+    # Evaluation using optimistic CVaR -- with bonus term
     returns = np.zeros(trial)
     for ep in range(trial):
         terminal = False

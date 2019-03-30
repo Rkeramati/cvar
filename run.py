@@ -1,4 +1,5 @@
 import numpy as np
+import pickle
 
 from core import drl
 from config import *
@@ -29,9 +30,6 @@ def main(args, version):
     # Config file
     config = Config(world.nS, world.nA)
     config.set(args)
-
-    if config.save_p: #Saving P matrix along the learning
-        save_p_ep = int(args.num_episode/ config.save_p_total)
 
     # Make C51 Agent for evaluation and learning
     c51 = drl.C51(config, init='random',ifCVaR=True)
@@ -80,21 +78,14 @@ def main(args, version):
             print('Saving results for episode %d out of %d, version %d'\
                     %(ep, config.args.num_episode, version))
 
-            np.save(args.name + '_results_online_%d.npy'%(version), returns_online)
+            saveFile = {'p': c51.p, 'counts': counts, 'episode': ep, 'gamma': config.gamma,\
+                    'returns': returns_online}
+            pickle.dump(saveFile, open(args.name + "_trail_%d_episode_%d.p"%(version, ep), "wb"))
             if config.eval:
-                np.save(args.name + '_results_eval_%d.npy'%(version), returns_eval)
-            np.save(args.name + '_c51_p_%d.npy'%(version), c51.p)
-            np.save(args.name + '_c51_counts_%d.npy'%(version), counts)
-            if config.eval:
-                np.save(args.name + '_c51_eval_p_%d.npy'%(version), c51_eval.p)
-        # Save p matrix along the way
-        if config.save_p:
-            if ep%save_p_ep == 0:
-                print('Saving P Mateirx, episode = %d'%(ep))
-                np.save(args.name + '_c51_p_%d_%d.npy'%(version, ep//save_p_ep), c51.p)
-                if config.eval:
-                    np.save(args.name + '_c51_eval_p_%d_%d.npy'%(version, ep//save_p_ep), c51_eval.p)
-
+                saveFile = {'p': c51_eval.p, 'counts': counts, 'episode': ep, 'gamma': config.gamma,\
+                        'returns': returns_eval}
+                pickle.dump(saveFile, open(args.name + "_eval__trial_%d_episode_%d.p"%(version, ep)\
+                        , "wb"))
 
 if __name__ == "__main__":
     args = parser.parse_args()
