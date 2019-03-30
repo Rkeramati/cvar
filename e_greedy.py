@@ -84,7 +84,7 @@ def main(args, version):
             pickle.dump(saveFile, open(args.name + '_version_%d_episode_%d.p', 'wb'))
             if config.e_greedy_eval:
                 saveFile = {'p': c51_eval.p, 'results': returns_eval, 'gamma':config.gamma}
-                pickle.dump(saveFile, open(args.name + '_eval_version_%d_episode_%5.p'%(version, ep),\
+                pickle.dump(saveFile, open(args.name + '_eval_version_%d_episode_%d.p'%(version, ep),\
                         'wb'))
 
 if __name__ == "__main__":

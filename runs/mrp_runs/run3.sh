@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --partition=next
-#SBATCH --time=10:00:00
+#SBATCH --time=20:00:00
 #SBATCH --mem=1G
 #SBATCH --job-name="opt1"
 #SBATCH --cpus-per-task=1

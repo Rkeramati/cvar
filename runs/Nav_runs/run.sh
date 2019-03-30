@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --partition=next
-#SBATCH --time=10:00:00
+#SBATCH --time=80:00:00
 #SBATCH --mem=1G
-#SBATCH --job-name="egreedy2"
+#SBATCH --job-name="e2D1"
 #SBATCH --cpus-per-task=1
 # list out some useful information
 echo "SLURM_JOBID="$SLURM_JOBID
