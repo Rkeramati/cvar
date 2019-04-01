@@ -2,7 +2,7 @@
 #SBATCH --partition=next
 #SBATCH --time=100:00:00
 #SBATCH --mem=1G
-#SBATCH --job-name="opt2D1"
+#SBATCH --job-name="opt2D3"
 #SBATCH --cpus-per-task=1
 # list out some useful information
 echo "SLURM_JOBID="$SLURM_JOBID
@@ -11,6 +11,6 @@ echo "SLURM_NNODES"=$SLURM_NNODES
 echo "SLURMTMPDIR="$SLURMTMPDIR
 echo "working directory = "$SLURM_SUBMIT_DIR
 # sample job
-sh opt_terrain.sh
+sh opt_terrain_3.sh
 echo NPROCS=$NPROCS
 echo "Done"
