@@ -58,7 +58,7 @@ class C51():
             Q_nx = np.sum(self.p[nx, :, :] * self.z, axis=1)
             a_star = np.argmax(Q_nx)
         else: # take the argmax of CVaR
-            Q_nx = self.CVaR(x, self.config.args.alpha, N=self.config.CVaRSamples)
+            Q_nx = self.CVaRopt(x, None, self.config.args.alpha, N=self.config.CVaRSamples, bonus=bonus)
             a_star = np.argmax(Q_nx)
 
         m = np.zeros(self.config.nAtoms) #target distribution
@@ -66,7 +66,7 @@ class C51():
         if not terminal:
             # Apply Optimism:
             cdf = np.cumsum(self.p[nx, a_star, :]) - bonus
-            cdf = np.clip(cdf, a_min=0, a_max=None) # Set less than 0 to 0
+            cdf = np.clip(cdf, a_min=0, a_max=1) # Set less than 0 to 0
             cdf[-1] = 1 #set the last to be equal to 1
             cdf[1:] -= cdf[:-1]
             optimistic_pdf = cdf # Set the optimisitc pdf
@@ -124,7 +124,7 @@ class C51():
             Q[a] = np.mean(values)
         return Q
 
-    def CVaRopt(self, x, count, alpha, c=0.1, N=20):
+    def CVaRopt(self, x, count, alpha, c=0.1, N=20, bonus=None):
         '''
             compute CVaR after a optimisctic shift on the ECDF
             args
@@ -137,7 +137,12 @@ class C51():
         Q = np.zeros(self.config.nA)
         for a in range(self.config.nA):
             # Apply Optimism
-            cdf = np.cumsum(self.p[x, a, :]) - c/np.sqrt(count[x, a])
+            if count is not None:
+                cdf = np.cumsum(self.p[x, a, :]) - c/np.sqrt(count[x, a])
+            else:
+                cdf = np.cumsum(self.p[x, a, :] - bonus)
+                if bonus == None:
+                    raise Exception("bonus and count are both None!")
             cdf = np.clip(cdf, a_min=0, a_max=None)
             cdf[-1] = 1 #Match the last one to 1
             # Compute CVaR
