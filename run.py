@@ -18,8 +18,11 @@ parser.add_argument("--env", default='mrp', help='envinronment')
 parser.add_argument("--num_episode", type=int, default=100, help='number of episodes')
 parser.add_argument("--egreedy", type=bool, default=False, help='If egreedy')
 parser.add_argument("--gamma", type=float, default=0.99, help="gamma")
+parser.add_argument("--load", type=str, default=None, help="Loading Address")
 
 def main(args, version):
+    print("Warning Loading for Evaluation not implemented!!")
+
     # Envinronments
     if args.env == 'mrp':
         world = mrp.machine_repair()
@@ -30,13 +33,22 @@ def main(args, version):
     # Config file
     config = Config(world.nS, world.nA)
     config.set(args)
+    if args.load is not None:
+        load_file = pickle.load(open(args.load, 'rb'))
+        # Make C51 Agent for evaluation and learning
+        c51 = drl.C51(config, init='random',ifCVaR=True, p=load_file['p'])
+    else:
+        c51 = drl.C51(config, init='random', ifCVaR = True, p=None)
 
-    # Make C51 Agent for evaluation and learning
-    c51 = drl.C51(config, init='random',ifCVaR=True)
     if config.eval:
         c51_eval = drl.C51(config, init='random', ifCVaR=True)
     # init counts
-    counts = np.zeros((world.nS, world.nA)) + 1 # 1 for all state-action pair
+    if args.load is not None:
+        counts = load_file['counts']
+        print("Loading Counts")
+    else:
+        counts = np.zeros((world.nS, world.nA)) + 1 # 1 for all state-action pair
+
     num_evaluations = int(config.args.num_episode/ (config.eval_episode * 1.0))
     returns_online = np.zeros((num_evaluations, config.eval_trial))
     if config.eval:

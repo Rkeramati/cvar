@@ -2,7 +2,7 @@ import numpy as np
 
 class C51():
     # C51 Class, for tabular setting
-    def __init__(self, config, init='uniform', ifCVaR = False):
+    def __init__(self, config, init='uniform', ifCVaR = False, p=None):
         '''
         args: init -- cdf initial values,
                 'optimistic': put all the mass to the last probability atom = V_max
@@ -19,23 +19,28 @@ class C51():
         self.ifCVaR = ifCVaR
         self.config = config
         self.init = init
-
+        # Load:
+        if p is not None:
+            print("P loaded for c51")
+            self.p = p
         # initialize:
-        if init == 'optimistic':
-            self.p = np.zeros((self.config.nS, self.config.nA,\
-                        self.config.nAtoms))
-            self.p[:, :, -2] = 1
-        elif init == 'uniform':
-            self.p = np.ones((self.config.nS, self.config.nA,\
-                        self.config.nAtoms)) * 1.0/self.config.nAtoms
-        elif init == 'random':
-            self.p = np.random.rand(self.config.nS, self.config.nA,\
-                        self.config.nAtoms)
-            for x in range(self.config.nS):
-                for a in range(self.config.nA):
-                    self.p[x, a, :] /= np.sum(self.p[x, a, :])
-        else:
-            raise Exception("C51: Init type not understood")
+        if p is None:
+            print("Initailizing P for c51")
+            if init == 'optimistic':
+                self.p = np.zeros((self.config.nS, self.config.nA,\
+                            self.config.nAtoms))
+                self.p[:, :, -2] = 1
+            elif init == 'uniform':
+                self.p = np.ones((self.config.nS, self.config.nA,\
+                            self.config.nAtoms)) * 1.0/self.config.nAtoms
+            elif init == 'random':
+                self.p = np.random.rand(self.config.nS, self.config.nA,\
+                            self.config.nAtoms)
+                for x in range(self.config.nS):
+                    for a in range(self.config.nA):
+                        self.p[x, a, :] /= np.sum(self.p[x, a, :])
+            else:
+                raise Exception("C51: Init type not understood")
 
         self.dz = (self.config.Vmax - self.config.Vmin)/(self.config.nAtoms-1)
         self.z = np.arange(self.config.nAtoms) * self.dz + self.config.Vmin
