@@ -28,6 +28,6 @@ env = T1DSimEnv(patient, sensor, pump, scenario)
 controller = BBController()
 
 # Put them together to create a simulation object
-s1 = SimObj(env, controller, timedelta(days=1), animate=False, path=path)
+s1 = SimObj(env, controller, timedelta(days=1), animate=True, path=path)
 results1 = sim(s1)
 print(results1)
