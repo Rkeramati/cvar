@@ -73,7 +73,7 @@ class T1DSimEnv(gym.Env):
             else:
                 return self.env.step(act, reward_fun=self.reward_fun)
         else:
-            act = Action(basal=action*self.env.pump._params['max_basal']/self.num_action, bolus=0)
+            act = Action(bolus=action*self.env.pump._params['max_bolus']/self.num_action, basal=0)
             if self.reward_fun is None:
                 return self.env.step(act)
             else:
