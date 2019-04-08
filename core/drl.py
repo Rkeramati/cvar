@@ -2,7 +2,7 @@ import numpy as np
 
 class C51():
     # C51 Class, for tabular setting
-    def __init__(self, config, init='uniform', ifCVaR = False, p=None):
+    def __init__(self, config, init='uniform', ifCVaR = False, p=None, memory=None):
         '''
         args: init -- cdf initial values,
                 'optimistic': put all the mass to the last probability atom = V_max
@@ -19,6 +19,9 @@ class C51():
         self.ifCVaR = ifCVaR
         self.config = config
         self.init = init
+
+        if memory is not None:
+            self.memory = memory
         # Load:
         if p is not None:
             print("P loaded for c51")
@@ -104,6 +107,16 @@ class C51():
         self.p[x, a, :] = self.p[x, a, :] + lr * (m - self.p[x, a, :])
         # Map back to a probability distribtuion, sum = 1
         self.p[x, a, :] /= np.sum(self.p[x, a, :])
+
+    def train(self, size, lr, counts, opt):
+        # Train on "size" samples, opt: optimism constant, counts: visitation count
+        if size <= self.memory.count:
+            print("warning: not enough samples to train on!! skipped")
+            return None
+        for _ in range(size):
+            x, a, r, nx, terminal = self.memory.sample()
+            self.observe(x, a, r, nx, terminal, lr=lr, bonus=opt/np.sqrt(counts[x, a]))
+        return None
 
     def Q(self, x):
         # return the Q values of the state x
