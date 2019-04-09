@@ -74,8 +74,8 @@ class T1DSimEnv(gym.Env):
 
     def _step(self, action):
     	bolus = action[0]; basal = action[1] # decompose both actions
-        act = Action(bolus=bolus, basal=basal)
-        return self.env.step(act, reward_fun=self.reward_fun, done_fun=self.done_fun)
+    	act = Action(bolus=bolus, basal=basal)
+    	return self.env.step(act, reward_fun=self.reward_fun, done_fun=self.done_fun)
 
     def _reset(self):
         obs, _, _, _ = self.env.reset()
@@ -101,7 +101,9 @@ class T1DSimEnv(gym.Env):
         lb_basal = self.env.pump._params['min_basal']
         ub_bolus = self.env.pump._params['max_bolus']
         lb_bolus = self.env.pump._params['min_bolus']
-        return spaces.Box(low=[lb_bolus, lb_basal], high=[ub_bolus, ub_basal], shape=(2,))
+
+        return spaces.Box(low=np.array([lb_bolus, lb_basal]),\
+        		 high=np.array([ub_bolus, ub_basal]), shape=None)
 
     @property
     def observation_space(self):
