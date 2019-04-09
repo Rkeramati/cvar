@@ -110,7 +110,7 @@ class C51():
 
     def train(self, size, lr, counts, opt):
         # Train on "size" samples, opt: optimism constant, counts: visitation count
-        if size <= self.memory.count:
+        if size > self.memory.count:
             print("warning: not enough samples to train on!! skipped")
             return None
         for _ in range(size):
@@ -170,7 +170,6 @@ class C51():
             # Average
             values = self.z[idx]
             Q[a] = np.mean(values)
-            values = np.zeros(N)
         return Q
 
     def softmax(self, x, temp):

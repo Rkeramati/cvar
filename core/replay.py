@@ -5,7 +5,7 @@ import pickle
 class Replay():
     def __init__(self, config, load=False, name=None):
         print("Initialzing the replay buffer")
-        self.size = config.size
+        self.size = config.memory_size
 
         if load:
             if name is None:
@@ -30,11 +30,11 @@ class Replay():
          self.current = (self.current + 1) % self.size # Pointer to the current state
     def sample(self):
         ''' sample a random observation'''
-        index = random.randint(low=0, high=self.count-1, size=1)[0] # Random Index
+        index = np.random.randint(low=0, high=self.count-1, size=1)[0] # Random Index
 
         action = self.actions[index]
         state = self.states[index]
-        reward = self.reward[index]
+        reward = self.rewards[index]
         terminal = self.terminals[index]
         if terminal:
             next_state = None
@@ -46,11 +46,11 @@ class Replay():
         save = {'actions': self.actions, 'rewards': self.rewards,\
                 'states':self.states, 'terminals': self.terminals,\
                 'count': self.count, 'current':self.current}
-        pickle.dump(open(name + '.p', 'wb'), save)
+        pickle.dump(save, open(name + '_replay.p', "wb"))
         print("Replay buffer saved, name:" + name + ".p")
 
     def load(self, name):
-        load = pickle.load(open(name + '.p', 'rb'))
+        load = pickle.load(open(name + '_replay.p', 'rb'))
         self.actions = load['actions']
         self.rewards = load['rewards']
         self.states = load['states']

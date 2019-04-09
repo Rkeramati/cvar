@@ -27,7 +27,10 @@ class Config():
         self.schedule = {1: [0.9, 0.1, 4], 2: [0.9, 0.05, 5], 3: [0.9, 0.3, 4],\
                 4: [0.9, 0.05, 2], 5:[0.9, 0.05, 10], 6:[0.9, 0.05, 20], 7:[0.9, 0.05, 15],\
 		8:[0.9, 0.1, 10]}
+        self.memory_size = 10000
+        self.train_size = 32
 
+        self.debug_episode = 100
     def set(self, args):
         # Set the input configs
         self.args = args # for input values
