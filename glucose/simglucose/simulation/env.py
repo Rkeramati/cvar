@@ -32,9 +32,12 @@ def risk_diff(BG_last_hour):
         _, _, risk_prev = risk_index([BG_last_hour[-2]], 1)
         return risk_prev - risk_current
 
-
+def BG_done(BG):
+    return BG < 70 or BG > 350
+    
 class T1DSimEnv(object):
     def __init__(self, patient, sensor, pump, scenario):
+        print("Warning: Ramtin made a custom terminal function, and it must be passed to the Gym Env")
         self.patient = patient
         self.sensor = sensor
         self.pump = pump
@@ -63,7 +66,7 @@ class T1DSimEnv(object):
 
         return CHO, insulin, BG, CGM
 
-    def step(self, action, reward_fun=risk_diff):
+    def step(self, action, reward_fun=risk_diff, done_fun=BG_done):
         '''
         action is a namedtuple with keys: basal, bolus
         '''
@@ -100,7 +103,7 @@ class T1DSimEnv(object):
         window_size = int(60 / self.sample_time)
         BG_last_hour = self.CGM_hist[-window_size:]
         reward = reward_fun(BG_last_hour)
-        done = BG < 70 or BG > 350
+        done = done_fun(BG) #BG < 70 or BG > 350
         obs = Observation(CGM=CGM)
 
         return Step(
