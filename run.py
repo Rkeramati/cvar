@@ -1,7 +1,7 @@
 import numpy as np
 import pickle
 
-from core import drl
+from core import drl, replay
 from config import *
 from env import mrp # machine repair
 from env import terrain as tr
@@ -19,6 +19,7 @@ parser.add_argument("--num_episode", type=int, default=100, help='number of epis
 parser.add_argument("--egreedy", type=bool, default=False, help='If egreedy')
 parser.add_argument("--gamma", type=float, default=0.99, help="gamma")
 parser.add_argument("--load", type=str, default=None, help="Loading Address")
+parser.add_argument("--debug", type=bool, default=False, help="print CVaR optimistic of some states")
 
 def main(args, version):
     print("Warning Loading for Evaluation not implemented!!")
@@ -30,18 +31,24 @@ def main(args, version):
         world = tr.Nav2D(random=False)
     else:
         raise Exception("Envinronment not understood")
+
     # Config file
     config = Config(world.nS, world.nA)
     config.set(args)
+
     if args.load is not None:
+        replay_buffer = replay.Replay(config, load=True, name=args.load)
         load_file = pickle.load(open(args.load, 'rb'))
         # Make C51 Agent for evaluation and learning
-        c51 = drl.C51(config, init='random',ifCVaR=True, p=load_file['p'])
+        c51 = drl.C51(config, init='random',ifCVaR=True, p=load_file['pi'], memory=replay_buffer)
     else:
-        c51 = drl.C51(config, init='random', ifCVaR = True, p=None)
+        replay_buffer = replay.Replay(config, load=False)
+        c51 = drl.C51(config, init='random', ifCVaR = True, p=None, memory=replay_buffer)
 
     if config.eval:
+        raise Exception("Evaluation for optimism is not implemented")
         c51_eval = drl.C51(config, init='random', ifCVaR=True)
+
     # init counts
     if args.load is not None:
         counts = load_file['counts']
@@ -69,9 +76,11 @@ def main(args, version):
             counts[o, a] += 1
 
             # update
-            c51.observe(o, a, r, no, terminal, lr=lr, bonus=args.opt/np.sqrt(counts[o,a]))
+            replay_buffer.add(o, a, r, terminal)
+            c51.train(size=config.train_size, lr=lr, counts=counts, opt=args.opt)
             # Eval
             if config.eval:
+                raise Exception("Evaluation class not implemeted")
                 c51_eval.observe(o, a, r, no, terminal, lr, bonus=0.0)
 
             # Go to next observation! I always forget this!
@@ -84,7 +93,11 @@ def main(args, version):
             returns_online[eval_num, :] = utils.eval_opt(world, c51, counts, config.eval_trial, config)
             if config.eval:
                 returns_eval[eval_num, :] = utils.eval(world, c51_eval, config.eval_trial, config.gamma)
-
+        if args.debug and ep%config.debug_episode == 0:
+            for x, y  in [(10, 7), (10, 8), (10, 9), (10, 10), (11, 13)]:
+                idx = x * world.maxY + y
+                print("CVaR Values of x:%d, y:%d = %g"%(x, y, c51.CVaRopt(idx, counts, c=args.opt,\
+                        alpha=args.alpha,N=config.CVaRSamples)[0]))
         # Save:
         if ep%config.save_episode == 0:
             print('Saving results for episode %d out of %d, version %d'\
@@ -93,6 +106,7 @@ def main(args, version):
             saveFile = {'p': c51.p, 'counts': counts, 'episode': ep, 'gamma': config.gamma,\
                     'returns': returns_online}
             pickle.dump(saveFile, open(args.name + "_trail_%d_episode_%d.p"%(version, ep), "wb"))
+            replay_buffer.save(args.name) #saving replay memory
             if config.eval:
                 saveFile = {'p': c51_eval.p, 'counts': counts, 'episode': ep, 'gamma': config.gamma,\
                         'returns': returns_eval}
