@@ -1,4 +1,4 @@
-python run.py --name 'Navres/opt_c_40' --trial 2 --opt 40.0 --alpha 0.25 --env '2D' --num_episode 100000 --gamma 0.95
+python run.py --name 'Navres/opt_c_40_load' --trial 2 --opt 40.0 --alpha 0.25 --env '2D' --num_episode 200000 --gamma 0.95 --load 'Navres/opt_c_40_trail_0_episode_99000.p'
 
-python run.py --name 'Navres/opt_c_15' --trial 2 --opt 15.0 --alpha 0.25 --env '2D' --num_episode 100000 --gamma 0.95
+python run.py --name 'Navres/opt_c_15_load' --trial 2 --opt 15.0 --alpha 0.25 --env '2D' --num_episode 200000 --gamma 0.95 --load 'Navres/opt_c_15_trail_0_episode_99000.p'
 
