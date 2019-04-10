@@ -28,18 +28,17 @@ class Replay():
 
          self.count = max(self.count, self.current + 1)
          self.current = (self.current + 1) % self.size # Pointer to the current state
-    def sample(self):
-        ''' sample a random observation'''
-        index = np.random.randint(low=0, high=self.count-1, size=1)[0] # Random Index
+    def sample(self, size):
+        ''' sample a batch of random observation'''
+        index = np.random.randint(low=0, high=self.count-1, size=size) # Random Index
 
         action = self.actions[index]
         state = self.states[index]
         reward = self.rewards[index]
         terminal = self.terminals[index]
-        if terminal:
-            next_state = None
-        else:
-            next_state = self.states[index + 1]
+        next_state = self.states[index + 1]
+
+        # Terminal state doesn't have a next state, DRL takes care of this
 
         return state, action, reward, next_state, terminal
     def save(self, name):
