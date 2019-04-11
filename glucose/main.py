@@ -59,7 +59,7 @@ def run(save_name,load_name):
 		terminal = False
 		step = 0
 		lr = Config.get_lr(ep)
-		
+
 		if ep%Config.eval_episode == 0:
 			epsilon=0
 		else:
@@ -68,14 +68,14 @@ def run(save_name,load_name):
 		observation = Config.process(env.reset(), meal=0)
 		episode_return = []
 
-		while step <= Config.max_step:
+		while step <= Config.max_step and not terminal:
 			# Pick action
-			if np.random.rand() <= epsilon and False:
+			if np.random.rand() <= epsilon:
 				action_id = np.random.randint(Config.nA)
 			else:
 				values = C51.Q(observation)
 				action_id = np.random.choice(np.flatnonzero(values == values.max()))
-			action = get_action(action_id, Config.action_map)	
+			action = get_action(action_id, Config.action_map)
 
 			next_observation, reward, terminal, info = env.step(action)
 			next_observation = Config.process(next_observation, meal=info['meal'])
@@ -87,7 +87,6 @@ def run(save_name,load_name):
 			observation = next_observation
 			step += 1
 			episode_return.append(reward)
-
 		returns[ep] = discounted_return(episode_return, Config.gamma)
 		if ep%Config.print_episode == 0 and not ep%Config.eval_episode==0:
 			print("Training.  Episode ep:%3d, Discounted Return = %g, Epsilon = %g"%(ep, returns[ep], epsilon))

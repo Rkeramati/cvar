@@ -15,13 +15,13 @@ class config():
         self.max_state = 400
         self.max_meal = 80
         self.meal_bin = 10
-        
+
         self.nAtoms = 51
         self.Vmin = -50
         self.Vmax = 50
         self.gamma = 0.95
 
-        self.max_step = 500
+        self.max_step = 200
         self.eval_episode = 50
         self.save_episode = 200
         self.num_episode = 10000
@@ -32,7 +32,7 @@ class config():
         self.max_lr = 0.5 # Maximum learnig rate
         self.min_lr = 0.1
         self.episode_ratio = 4 # When to reach the minimum in episode for alpha and ep schedule
- 
+
         self.schedule = [0.9, 0.1, 4] # Epsilon greedy exploration scheduelce
 
         self.nS = self.state_bin * self.meal_bin
@@ -58,4 +58,4 @@ class config():
         state = min(int(state.CGM/self.bin_size), self.state_bin)
         meal = min(int(meal/self.mea_size), self.meal_bin)
         idx = state + meal * self.meal_bin #state idx given mean and state
-        return idx    
+        return idx
