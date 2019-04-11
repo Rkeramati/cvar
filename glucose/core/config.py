@@ -17,8 +17,8 @@ class config():
         self.meal_bin = 10
 
         self.nAtoms = 51
-        self.Vmin = -50
-        self.Vmax = 50
+        self.Vmin = -70
+        self.Vmax = 5
         self.gamma = 0.95
 
         self.max_step = 200
@@ -33,7 +33,7 @@ class config():
         self.min_lr = 0.1
         self.episode_ratio = 4 # When to reach the minimum in episode for alpha and ep schedule
 
-        self.schedule = [0.9, 0.1, 4] # Epsilon greedy exploration scheduelce
+        self.schedule = [0.9, 0.1, 2] # Epsilon greedy exploration scheduelce
 
         self.nS = self.state_bin * self.meal_bin
         self.bin_size = (self.max_state - 0)/self.state_bin

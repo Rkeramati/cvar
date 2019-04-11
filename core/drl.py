@@ -83,12 +83,12 @@ class C51():
             l = np.floor(b).astype(np.int32); u = np.ceil(b).astype(np.int32)
             idx = np.arange(self.config.nAtoms)
 
-            m[l] += self.p[nx, a_star, idx] * (u-b)
-            m[u] += self.p[nx, a_star, idx] * (b-l)
+            m[l] += optimistic_pdf[idx] * (u-b)
+            m[u] += optimistic_pdf[idx] * (b-l)
 
             # taking into account when l == u
             # will be zero for l<b and 1 for l==b
-            m[idx] += self.p[nx, a_star, idx] * np.floor((1 + (l-b)))
+            m[idx] += optimistic_pdf[idx] * np.floor((1 + (l-b)))
         # Terminal State:
         else:
             tz = np.clip(r, self.config.Vmin, self.config.Vmax)
