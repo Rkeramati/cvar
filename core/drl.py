@@ -108,11 +108,11 @@ class C51():
                     m[batch, l] += (u-b)
                     m[batch, u] += (b-l)
 
-        m = np.mean(m, axis=0) # Aevrage over batch
-        # Learning with learning rate
-        self.p[x, a, :] = self.p[x, a, :] + lr * (m - self.p[x, a, :])
-        # Map back to a probability distribtuion, sum = 1
-        self.p[x, a, :] /= np.sum(self.p[x, a, :])
+
+            self.p[x[batch], a[batch], :] = self.p[x[batch], a[batch], :] +\
+                    lr * (m[batch, :] - self.p[x[batch], a[batch], :])
+            # Map back to a probability distribtuion, sum = 1
+            self.p[x[batch], a[batch], :] /= np.sum(self.p[x[batch], a[batch], :])
 
     def train(self, size, lr, counts, opt):
         # Train on "size" samples, opt: optimism constant, counts: visitation count
