@@ -35,7 +35,8 @@ def make_env():
     entry_point='gymenv:T1DSimEnv',
     kwargs={'patient_name': 'adolescent#002',
             'reward_fun': reward_fun,
-            'done_fun': done_fun}
+            'done_fun': done_fun,
+            'scenario_seed': 5}
 	)
 	env = gym.make('simglucose-adolescent2-v0')
 	return env
