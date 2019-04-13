@@ -1,6 +1,7 @@
 import numpy as np
 import pickle
 import time
+import matplotlib.pyplot as plt
 
 from core import drl, replay
 from config import *
@@ -18,7 +19,7 @@ parser.add_argument("--alpha", default=0.25, type=float, help='CVaR risk value')
 parser.add_argument("--env", default='mrp', help='envinronment')
 parser.add_argument("--num_episode", type=int, default=100, help='number of episodes')
 parser.add_argument("--egreedy", type=bool, default=False, help='If egreedy')
-parser.add_argument("--gamma", type=float, default=0.99, help="gamma")
+parser.add_argument("--gamma", type=float, default=0.95, help="gamma")
 parser.add_argument("--load", type=str, default=None, help="Loading Address")
 parser.add_argument("--debug", type=bool, default=False, help="print CVaR optimistic of some states")
 
@@ -71,6 +72,11 @@ def main(args, version):
 
         # simulate
         start = time.time()
+        #if  o == 194:
+        #    plt.clf()
+        #    plt.bar(c51.z, c51.p[o, 0, :])
+        #    plt.bar(c51.z, c51.p[o, 1, :])
+        #    plt.pause(0.01)
         while not terminal:
             values = c51.CVaRopt(np.expand_dims(o, axis=-1), counts, c=args.opt,\
                     alpha=args.alpha, N=config.CVaRSamples)[0]

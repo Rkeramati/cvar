@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class C51():
     # C51 Class, for tabular setting
     def __init__(self, config, init='uniform', ifCVaR = False, p=None, memory=None):
@@ -44,7 +45,7 @@ class C51():
         self.dz = (self.config.Vmax - self.config.Vmin)/(self.config.nAtoms-1)
         self.z = np.arange(self.config.nAtoms) * self.dz + self.config.Vmin
 
-    def observe(self, x, a, r, nx, terminal, lr, bonus):
+    def observe(self, x, a, r, nx, terminal, lr, counts):
         '''
             Observe the (x, a, r, nx, terminal) and update the distribution
             toward the target distribution
@@ -54,7 +55,7 @@ class C51():
             nx -- int, next state
             terminal -- bool, if terminal
             lr -- learning rate
-            bonus -- amount of bonus given, usually C/sqrt(count)
+            counts for bonus term
 
         '''
         '''
@@ -71,21 +72,23 @@ class C51():
             Q_nx = np.sum(self.p[nx, :, :] * self.z, axis=1)
             a_star = np.argmax(Q_nx, axis=-1)
         else: # take the argmax of CVaR
-            Q_nx = self.CVaRopt(x, None, self.config.args.alpha, N=self.config.CVaRSamples, bonus=bonus)
+            Q_nx = self.CVaRopt(nx, counts, self.config.args.alpha,\
+                    c=self.config.args.opt, N=self.config.CVaRSamples)
             a_star = np.argmax(Q_nx, axis=-1)
 
         m = np.zeros((batch_size, self.config.nAtoms)) #target distribution
         for batch in range(batch_size):
             if not terminal[batch]:
                 # Apply Optimism:
-                cdf = np.cumsum(self.p[nx[batch], a_star[batch], :]) - bonus[batch]
+                cdf = np.cumsum(self.p[nx[batch], a_star[batch], :]) -\
+                        self.config.args.opt/np.sqrt(counts[nx[batch], a_star[batch]])
                 cdf = np.clip(cdf, a_min=0, a_max=1) # Set less than 0 to 0
                 cdf[-1] = 1 #set the last to be equal to 1
                 cdf[1:] -= cdf[:-1]
                 optimistic_pdf = cdf # Set the optimisitc pdf
 
                 # Distribute the probability mass
-                tz = np.clip(r[batch] + self.config.gamma * self.z,\
+                tz = np.clip(r[batch] + self.config.args.gamma * self.z,\
                         self.config.Vmin, self.config.Vmax)
                 b = (tz - self.config.Vmin)/self.dz
                 l = np.floor(b).astype(np.int32); u = np.ceil(b).astype(np.int32)
@@ -108,7 +111,6 @@ class C51():
                     m[batch, l] += (u-b)
                     m[batch, u] += (b-l)
 
-
             self.p[x[batch], a[batch], :] = self.p[x[batch], a[batch], :] +\
                     lr * (m[batch, :] - self.p[x[batch], a[batch], :])
             # Map back to a probability distribtuion, sum = 1
@@ -120,7 +122,7 @@ class C51():
             print("warning: not enough samples to train on!! skipped")
             return None
         x, a, r, nx, terminal = self.memory.sample(size)
-        self.observe(x, a, r, nx, terminal, lr=lr, bonus=opt/np.sqrt(counts[x, a]))
+        self.observe(x, a, r, nx, terminal, lr=lr, counts=counts)
         return None
 
     def Q(self, x):

@@ -4,8 +4,8 @@
 
 class Config():
     def __init__(self, nS, nA):
-        self.Vmin = -50 # Min Value for C51
-        self.Vmax = 50
+        self.Vmin = -60 # Min Value for C51
+        self.Vmax = 10
         self.nAtoms = 51 # nAtoms for C51
         self.nS = nS
         self.nA = nA
