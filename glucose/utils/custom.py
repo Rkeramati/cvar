@@ -1,3 +1,9 @@
+
+def scenario_fun(): #Returning a Custom Scenario
+    # Time hour + start time
+    # Meal CHO = Meal/3
+    return [(0.2, 60), (0.5, 20), (1, 30)]
+
 def reward_fun(BG):
     b = BG[-1]/18.018018
     if b < 6:
