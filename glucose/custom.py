@@ -6,16 +6,16 @@ def reward_fun(BG):
         return -(b - 6)**2/10
 
 def done_fun(BG):
-	# Never Terminate, untill the end of the simulation
-	return False
+    # Never Terminate, untill the end of the simulation
+    return False
 
 def get_action(index, action_map):
 
-	# get action from action_map
-	return action_map[index, :]
+    # get action from action_map
+    return action_map[index, :]
 
 def discounted_return(returns, gamma):
-	ret = 0
-	for r in reversed(returns):
-		ret = r + gamma * ret
-	return ret
+    ret = 0
+    for r in reversed(returns):
+        ret = r + gamma * ret
+    return ret
