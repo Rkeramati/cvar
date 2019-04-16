@@ -4,12 +4,12 @@
 
 class Config():
     def __init__(self, nS, nA):
-        self.Vmin = -50 # Min Value for C51
-        self.Vmax = 50
+        self.Vmin = -60 # Min Value for C51
+        self.Vmax = 10
         self.nAtoms = 51 # nAtoms for C51
         self.nS = nS
         self.nA = nA
-        self.gamma = 1 # Discount Factor
+        self.gamma = 0.95 # Discount Factor
 
         self.max_e = 0.9 # Exploration max epsilon
         self.min_e = 0.1
@@ -21,12 +21,16 @@ class Config():
         self.eval = False # If train a eval network as well
         self.eval_trial = 20 # number of trial for evaluation/ either online or eval
         self.eval_episode = 50 # Evaluation episodes
-        self.save_episode = 1000 # Save episode
+        self.save_episode = 200 # Save episode
         self.e_greedy_eval = True # Evaluation for e-greedy
 
         self.schedule = {1: [0.9, 0.1, 4], 2: [0.9, 0.05, 5], 3: [0.9, 0.3, 4],\
                 4: [0.9, 0.05, 2], 5:[0.9, 0.05, 10], 6:[0.9, 0.05, 20], 7:[0.9, 0.05, 15],\
 		8:[0.9, 0.1, 10]}
+        self.memory_size = 500000
+        self.train_size = 32
+
+        self.debug_episode = 100
 
     def set(self, args):
         # Set the input configs

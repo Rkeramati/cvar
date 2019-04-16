@@ -26,7 +26,7 @@ def eval_opt(world, c51, counts, trial, config):
         o = world.reset()
         ret = []
         while not terminal:
-            values = c51.CVaRopt(o, counts, c=config.args.opt,\
+            values = c51.CVaRopt(np.expand_dims(o, axis=-1), counts, c=config.args.opt,\
                     alpha=config.args.alpha, N=config.CVaRSamples)
             a = np.random.choice(np.flatnonzero(values == values.max()))
             no, r, terminal = world.step(a)
