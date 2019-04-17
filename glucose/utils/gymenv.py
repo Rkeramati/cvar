@@ -38,19 +38,17 @@ class T1DSimEnv(gym.Env):
         if patient_name is None:
             patient_name = 'adolescent#001'
         patient = T1DPatient.withName(patient_name)
-        sensor = CGMSensor.withName('Dexcom', seed=seeds[1])
+        self.sensor = CGMSensor.withName('Dexcom', seed=seeds[1])
         hour = self.np_random.randint(low=0.0, high=24.0)
         start_time = datetime(2018, 1, 1, hour, 0, 0)
-        print(start_time)
         # scenario_seed can be fed to have randomness in sensor only, and fixed meal plan
         # A good simulator should be able to act only given patient's name not random seed
         if scenario is not None:
         	scenario = CustomScenario(start_time=start_time, scenario=scenario)
         else:
         	scenario = RandomScenario(start_time=start_time, seed=seeds[2])
-        print(scenario)
         pump = InsulinPump.withName('Insulet')
-        self.env = _T1DSimEnv(patient, sensor, pump, scenario)
+        self.env = _T1DSimEnv(patient, self.sensor, pump, scenario)
         self.reward_fun = reward_fun
         self.done_fun = done_fun
 
@@ -81,6 +79,7 @@ class T1DSimEnv(gym.Env):
     	return self.env.step(act, reward_fun=self.reward_fun, done_fun=self.done_fun)
 
     def _reset(self):
+        #self.sensor.seed = 10
         obs, _, _, _ = self.env.reset()
         return obs
 
