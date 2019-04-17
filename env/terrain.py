@@ -37,7 +37,7 @@ class Nav2D():
         self.current_state = self.initial_state
 
         self.counter = 0
-        self.max_step = 1000 #maximum number of steps in each run
+        self.max_step = 100 #maximum number of steps in each run
 
     def random_obstacles(self):
         # generate random obstacles
