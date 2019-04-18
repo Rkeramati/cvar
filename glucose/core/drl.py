@@ -44,7 +44,7 @@ class C51():
 
         self.dz = (self.config.Vmax - self.config.Vmin)/(self.config.nAtoms-1)
         self.z = np.arange(self.config.nAtoms) * self.dz + self.config.Vmin
-
+        print("Warning: CVaRopt is geared toward e-greedy, with bonus=0 always!")
     def observe(self, x, a, r, nx, terminal, lr, counts=None):
         '''
             Observe the (x, a, r, nx, terminal) and update the distribution
@@ -73,7 +73,7 @@ class C51():
             a_star = np.argmax(Q_nx, axis=-1)
         else: # take the argmax of CVaR
             Q_nx = self.CVaRopt(nx, counts, self.config.args.alpha,\
-                    c=self.config.args.opt, N=self.config.CVaRSamples)
+                    c=0.0, N=self.config.CVaRSamples, bonus=0.0)
             a_star = np.argmax(Q_nx, axis=-1)
 
         m = np.zeros((batch_size, self.config.nAtoms)) #target distribution

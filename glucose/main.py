@@ -14,7 +14,7 @@ from utils.gymenv import T1DSimEnv
 from core import config, drl, replay
 
 # Others
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import numpy as np
 from datetime import timedelta
 from datetime import datetime
@@ -32,6 +32,10 @@ parser.add_argument("--hour", type=int, default=2, help="Simulation hour")
 parser.add_argument("--seed", type=int, default=2, help="random seed number")
 parser.add_argument("--gamma", type=float, default=0.999, help="Discount Factor")
 parser.add_argument("--num_episode", type=int, default=1000, help="Number of episodes")
+parser.add_argument("--delta_state", type=float, default=0.0, help="stochasticity in the state")
+parser.add_argument("--action_sigma",type=float, default=0.0, help="action stochasticity")
+parser.add_argument("--ifCVaR", type=bool, default=False, help="if optimize for CVaR")
+parser.add_argument("--alpha", type=float, default=0.25, help="CVaR risk value")
 
 def make_env(args):
     register(
@@ -67,15 +71,14 @@ def run(args):
     if args.load_name is not None:
         load_file = pickle.load(open(args.load_name + '.p'), 'rb')
         replay_buffer = replay.Replay(Config, load=True, name=args.load_name)
-        C51 = drl.C51(Config, ifCVaR=False, p=load_file["p"], memory=replay_buffer)
+        C51 = drl.C51(Config, ifCVaR=Config.args.ifCVaR, p=load_file["p"], memory=replay_buffer)
         returns = load_file["returns"]
         initial_ep = load_file["ep"]
     else:
         returns = np.zeros(Config.args.num_episode)
         replay_buffer = replay.Replay(Config, load=False)
-        C51 = drl.C51(Config, ifCVaR=False, p=None, memory=replay_buffer)
+        C51 = drl.C51(Config, ifCVaR=Config.args.ifCVaR, p=None, memory=replay_buffer)
         initial_ep = 0
-
     # Training Loop:
     for ep in range(initial_ep, Config.args.num_episode+initial_ep):
         terminal = False
@@ -90,16 +93,26 @@ def run(args):
         episode_return = []
         Config.max_step = args.hour*60/(env.env.sensor.sample_time) # Compute the max step
         meal = 0
-        observation = Config.process(env.reset(), meal=0)
-
+        observation = Config.process(env.reset(), meal=0) # Process will add stochasticity
+                                                          # to the observed state
+        for ii in range(Config.nA):
+            plt.clf()
+            plt.bar(C51.z, C51.p[observation, ii, :])
+        plt.pause(0.01)
         while step <= Config.max_step and not terminal:
 
             if np.random.rand() <= epsilon:
                 action_id = np.random.randint(Config.nA)
             else:
-                values = C51.Q(observation)
+                if Config.args.ifCVaR:
+                    o = np.expand_dims([observation], axis=1)
+                    values = C51.CVaRopt(o, count=None,\
+                            alpha=Config.args.alpha, N=Config.CVaRSamples, c=0.0, bonus=0.0)
+                else:
+                    values = C51.Q(observation)
                 action_id = np.random.choice(np.flatnonzero(values == values.max()))
-            action = get_action(action_id, Config.action_map)
+            action = Config.get_action(action_id) # get action with/ without randomness
+
             next_observation, reward, terminal, info, num_step = _step(env,\
                     action, step, Config.max_step)
             step += num_step
@@ -109,15 +122,12 @@ def run(args):
             episode_return.append(reward)
             if step >= Config.max_step:
                 terminal = True
-            #print("add observation:", observation, action_id, reward, next_observation, terminal, step)
+
             replay_buffer.add(observation, action_id, reward, terminal)
             C51.train(size=Config.train_size, lr=lr, counts=None, opt=0.0)
 
             observation = next_observation
 
-            #if args.animation:
-            #    env.render()
-            #    plt.pause(0.001)
         returns[ep] = discounted_return(episode_return, Config.args.gamma)
         if ep%Config.print_episode == 0 and not ep%Config.eval_episode==0:
             print("Training.  Episode ep:%3d, Discounted Return = %g, Epsilon = %g, BG=%g"\
