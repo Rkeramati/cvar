@@ -14,7 +14,7 @@ from utils.gymenv import T1DSimEnv
 from core import config, drl, replay
 
 # Others
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import numpy as np
 from datetime import timedelta
 from datetime import datetime
@@ -95,10 +95,10 @@ def run(args):
         meal = 0
         observation = Config.process(env.reset(), meal=0) # Process will add stochasticity
                                                           # to the observed state
-        for ii in range(Config.nA):
-            plt.clf()
-            plt.bar(C51.z, C51.p[observation, ii, :])
-        plt.pause(0.01)
+        #for ii in range(Config.nA):
+        #    plt.clf()
+        #    plt.bar(C51.z, C51.p[observation, ii, :])
+        #plt.pause(0.01)
         while step <= Config.max_step and not terminal:
 
             if np.random.rand() <= epsilon:
