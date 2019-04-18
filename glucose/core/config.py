@@ -41,6 +41,8 @@ class config():
         self.action_map = np.transpose([np.tile(self.bolus_map, len(self.basal_map)), np.repeat(self.basal_map, len(self.bolus_map))])
         self.nA = self.action_map.shape[0]
 
+        self.CVaRSamples = 20
+
         self.train_size=32
         self.memory_size = 10000
 
@@ -56,8 +58,22 @@ class config():
         e = max(self.min_e, self.max_e + ep *slope)
         return e
 
+    def get_action(self, action_id):
+        action = self.action_map[action_id, :]
+        if self.args.action_sigma > 0.0: # Randomness in Action:
+            action[0] += np.random.normal(0, self.args.action_sigma)
+        return action
+
     def process(self, state, meal):
+
         state = min(int(state.CGM/self.bin_size), self.state_bin)
+        # Randomize the state observation
+        if np.random.rand() <= self.args.delta_state:
+            if np.random.rand() <= 0.5:
+                state = max(0, state - 1)
+            else:
+                state = min(self.state_bin, state + 1)
         meal = min(int(meal/self.meal_size), self.meal_bin)
         idx = state + meal * self.meal_bin #state idx given mean and state
         return idx
+
