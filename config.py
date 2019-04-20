@@ -22,7 +22,7 @@ class Config():
         self.eval_trial = 20 # number of trial for evaluation/ either online or eval
         self.eval_episode = 50 # Evaluation episodes
         self.save_episode = 200 # Save episode
-        self.e_greedy_eval = True # Evaluation for e-greedy
+        self.e_greedy_eval = False # not-implemented # Evaluation for e-greedy
 
         self.schedule = {1: [0.9, 0.1, 4], 2: [0.9, 0.05, 5], 3: [0.9, 0.3, 4],\
                 4: [0.9, 0.05, 2], 5:[0.9, 0.05, 10], 6:[0.9, 0.05, 20], 7:[0.9, 0.05, 15],\

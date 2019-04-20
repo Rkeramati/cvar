@@ -1,7 +1,7 @@
 import numpy as np
 import pickle
 
-from core import drl
+from core import drl, replay
 from config import *
 from env import mrp # machine repair
 from env import terrain as tr
@@ -33,14 +33,15 @@ def main(args, version):
     config.set(args)
 
     # Make C51 Agent for evaluation and learning
-    c51 = drl.C51(config, init='random',ifCVaR=True)
+    replay_buffer = replay.Replay(config, load=False)
+    c51 = drl.C51(config, init='random',ifCVaR=True, p=None, memory=replay_buffer)
     if config.e_greedy_eval:
-        c51_eval = drl.C51(config, init='random', ifCVaR=True)
+        raise Exception("Egreedy eval not implemeted")
+        c51_eval = drl.C51(config, init='random', ifCVaR=True, p=None)
     # init counts
     num_evaluations = int(config.args.num_episode/ (config.eval_episode * 1.0))
     returns_online = np.zeros((num_evaluations, config.eval_trial))
-    if config.e_greedy_eval:
-        returns_eval = np.zeros((num_evaluations, config.eval_trial))
+    returns_eval = np.zeros((num_evaluations, config.eval_trial))
 
     for ep in range(config.args.num_episode):
         terminal = False
@@ -55,13 +56,15 @@ def main(args, version):
             if np.random.rand() <= epsilon:
                 a = np.random.randint(world.nA)
             else:
-                values = c51.CVaR(o, alpha=args.alpha, N=config.CVaRSamples)
+                values = c51.CVaRopt(np.expand_dims(o, axis=-1), count=None, alpha=args.alpha,\
+                        N=config.CVaRSamples, bonus=0, c=None)
                 #a = np.argmax(values)
                 a = np.random.choice(np.flatnonzero(values == values.max()))
             no, r, terminal = world.step(a)
 
             # update
-            c51.observe(o, a, r, no, terminal, lr=lr, bonus=0.0)
+            replay_buffer.add(o, a, r, terminal)
+            c51.train(size=config.train_size, lr=lr, counts=None, opt=None, egreedy=True)
             # Eval
             if config.e_greedy_eval:
                 c51_eval.observe(o, a, r, no, terminal, lr=lr, bonus=0.0)
@@ -72,16 +75,18 @@ def main(args, version):
         # To evaluate the CVaR, we need the return distribution
         if ep%config.eval_episode == 0:
             eval_num = ep // config.eval_episode
-            returns_online[eval_num, :] = utils.eval(world, c51, config.eval_trial, config)
-            if config.e_greedy_eval:
-                returns_eval[eval_num, :] = utils.eval(world, c51_eval, config.eval_trial, config)
+            returns_online[eval_num, :] = utils.eval(world, c51,\
+                    config.eval_trial, config, epsilon=epsilon)
+            returns_eval[eval_num, :] = utils.eval(world, c51,\
+                        config.eval_trial, config, epsilon=epsilon)
 
         # Save:
         if ep%config.save_episode == 0:
             print('Saving results for episode %d out of %d, version %d'\
                     %(ep, config.args.num_episode, version))
-            saveFile = {'p': c51.p, 'results': returns_online, 'gamma':config.gamma}
-            pickle.dump(saveFile, open(args.name + '_version_%d_episode_%d.p', 'wb'))
+            saveFile = {'p': c51.p, 'results': returns_online,\
+                    'gamma':config.gamma, 'results_eval': returns_eval}
+            pickle.dump(saveFile, open(args.name + '_version_%d_episode_%d.p'%(version, ep), 'wb'))
             if config.e_greedy_eval:
                 saveFile = {'p': c51_eval.p, 'results': returns_eval, 'gamma':config.gamma}
                 pickle.dump(saveFile, open(args.name + '_eval_version_%d_episode_%d.p'%(version, ep),\

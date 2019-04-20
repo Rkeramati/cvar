@@ -72,16 +72,23 @@ class C51():
             Q_nx = np.sum(self.p[nx, :, :] * self.z, axis=1)
             a_star = np.argmax(Q_nx, axis=-1)
         else: # take the argmax of CVaR
-            Q_nx = self.CVaRopt(nx, counts, self.config.args.alpha,\
+            if counts is not None:
+                Q_nx = self.CVaRopt(nx, counts, self.config.args.alpha,\
                     c=self.config.args.opt, N=self.config.CVaRSamples)
+            else:
+                Q_nx = self.CVaRopt(nx, count=None, alpha=self.config.args.alpha,\
+                        c=0.0, N=self.config.CVaRSamples, bonus=0)
             a_star = np.argmax(Q_nx, axis=-1)
 
         m = np.zeros((batch_size, self.config.nAtoms)) #target distribution
         for batch in range(batch_size):
             if not terminal[batch]:
                 # Apply Optimism:
-                cdf = np.cumsum(self.p[nx[batch], a_star[batch], :]) -\
+                if counts is not None:
+                    cdf = np.cumsum(self.p[nx[batch], a_star[batch], :]) -\
                         self.config.args.opt/np.sqrt(counts[nx[batch], a_star[batch]])
+                else: #No optimism applied
+                    cdf = np.cumsum(self.p[nx[batch], a_star[batch], :])
                 cdf = np.clip(cdf, a_min=0, a_max=1) # Set less than 0 to 0
                 cdf[-1] = 1 #set the last to be equal to 1
                 cdf[1:] -= cdf[:-1]
@@ -116,13 +123,16 @@ class C51():
             # Map back to a probability distribtuion, sum = 1
             self.p[x[batch], a[batch], :] /= np.sum(self.p[x[batch], a[batch], :])
 
-    def train(self, size, lr, counts, opt):
+    def train(self, size, lr, counts, opt, egreedy=False):
         # Train on "size" samples, opt: optimism constant, counts: visitation count
         if size > self.memory.count:
             print("warning: not enough samples to train on!! skipped")
             return None
         x, a, r, nx, terminal = self.memory.sample(size)
-        self.observe(x, a, r, nx, terminal, lr=lr, counts=counts)
+        if egreedy:
+            self.observe(x, a, r, nx, terminal, lr=lr, counts=None)
+        else:
+            self.observe(x, a, r, nx, terminal, lr=lr, counts=counts)
         return None
 
     def Q(self, x):

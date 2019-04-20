@@ -1,6 +1,6 @@
 import numpy as np
 
-def eval(world, c51, trial, config):
+def eval(world, c51, trial, config, epsilon=0):
     # Policy Evaluation with c51, CVaR optimization
     returns = np.zeros(trial)
     for ep in range(trial):
@@ -8,8 +8,12 @@ def eval(world, c51, trial, config):
         o = world.reset()
         ret = []
         while not terminal:
-            values = c51.CVaR(o, alpha=config.args.alpha, N=config.CVaRSamples)
-            a = np.random.choice(np.flatnonzero(values == values.max()))
+            if np.random.rand() <= epsilon:
+                a = np.random.randint(world.nA)
+            else:
+                values = c51.CVaRopt(np.expand_dims(o, axis=-1), alpha=config.args.alpha,\
+                        N=config.CVaRSamples, count=None, bonus=0.0)
+                a = np.random.choice(np.flatnonzero(values == values.max()))
             no, r, terminal = world.step(a)
             ret.append(r)
             o = no
