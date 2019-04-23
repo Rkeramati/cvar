@@ -3,13 +3,14 @@ import numpy as np
 class config():
     # Config file for C51 algorithm
     def __init__(self, env, args):
+        print("Warning: Max Bolus/4")
         self.max_basal = env.action_space.high[1] # max of basal
         self.min_basal = env.action_space.low[1] # min of basal
-        self.max_bolus = env.action_space.high[0] # max of bolus
+        self.max_bolus = env.action_space.high[0]/4 # max of bolus
         self.min_bolus = env.action_space.low[0] # min of bolus
 
         self.basal_bin = 1
-        self.bolus_bin = 10
+        self.bolus_bin = 5
 
         self.state_bin = 50
         self.max_state = 500
@@ -19,6 +20,7 @@ class config():
         self.nAtoms = 51
         self.Vmin = -50
         self.Vmax = 5
+        self.power_law = 1
 
         self.eval_episode = 10
         self.save_episode = 100
@@ -59,10 +61,10 @@ class config():
         return e
 
     def get_action(self, action_id):
+        total_action = [0, 0]
         action = self.action_map[action_id, :]
-        if self.args.action_sigma > 0.0: # Randomness in Action:
-            action[0] += np.random.normal(0, self.args.action_sigma)
-        return action
+        total_action[0] = action[0] + np.random.normal(0, self.args.action_sigma)
+        return total_action
 
     def process(self, state, meal):
 
@@ -76,4 +78,10 @@ class config():
         meal = min(int(meal/self.meal_size), self.meal_bin)
         idx = state + meal * self.meal_bin #state idx given mean and state
         return idx
+
+    def get_delay(self):
+        # Return the action delay
+        step = self.args.action_delay - int(np.random.power(self.power_law) \
+                * self.args.action_delay) - 1
+        return max(0, step)
 

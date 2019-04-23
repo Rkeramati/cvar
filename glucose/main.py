@@ -36,7 +36,7 @@ parser.add_argument("--delta_state", type=float, default=0.0, help="stochasticit
 parser.add_argument("--action_sigma",type=float, default=0.0, help="action stochasticity")
 parser.add_argument("--ifCVaR", type=bool, default=False, help="if optimize for CVaR")
 parser.add_argument("--alpha", type=float, default=0.25, help="CVaR risk value")
-
+parser.add_argument("--action_delay", type=int, default=0, help="maximum number of steps to delay the action")
 def make_env(args):
     register(
     id='simglucose-adult3-v0',
@@ -47,16 +47,30 @@ def make_env(args):
             'scenario': scenario_fun(),
             'seed':args.seed} # Returning a custom scenario
     )
+    # Check if delay make sense:
     env = gym.make('simglucose-adult3-v0')
+    if minDiff(env.env.sensor.sample_time) <= args.action_delay:
+        raise Exception("Too much delay in action, forget a whole meal!")
+
     return env
 
-def _step(env, action, step, max_step):
+def _step(env, action, step, max_step, delay):
     reward = []
-    num_step = 1
+    num_step = 0
+
+    # Action Delay
+    if delay > 0:
+        delayed = 0; terminal = False
+        while delayed <= delay and not terminal:
+            obs, rew, terminal, info = env.step([0, 0])
+            num_step += 1
+            delayed += 1
+    # Action
     obs, rew, terminal, info = env.step(action)
+    num_step += 1
     reward.append(rew)
     meal = info['meal']
-
+    # Till next meal
     while meal <= 0 and not terminal and step + num_step <= max_step:
         obs, rew, terminal, info = env.step([0, 0])
         meal = info['meal']
@@ -113,8 +127,9 @@ def run(args):
                 action_id = np.random.choice(np.flatnonzero(values == values.max()))
             action = Config.get_action(action_id) # get action with/ without randomness
 
+            delay = Config.get_delay()
             next_observation, reward, terminal, info, num_step = _step(env,\
-                    action, step, Config.max_step)
+                    action, step, Config.max_step, delay)
             step += num_step
             BG = next_observation.CGM
             next_observation = Config.process(next_observation, meal=info['meal'])

@@ -3,6 +3,18 @@ def scenario_fun(): #Returning a Custom Scenario
     # Time hour + start time
     # Meal CHO = Meal/3
     return [(1, 60), (3, 20), (5, 60)]
+def minDiff(sample_time):
+    arr = [x[0] * 60/sample_time for x in scenario_fun()]
+    arr = sorted([0] + arr)
+
+    # Initialize Result
+    minDiff = 10**20
+    n = len(arr)
+
+    for i in range(n - 1):
+        if (arr[i+1] - arr[i] < minDiff):
+            minDiff = arr[i+1] - arr[i]
+    return minDiff
 
 def reward_fun(BG):
     if BG[-1] <= 39:
