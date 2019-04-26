@@ -73,7 +73,7 @@ class C51():
             a_star = np.argmax(Q_nx, axis=-1)
         else: # take the argmax of CVaR
             Q_nx = self.CVaRopt(nx, counts, self.config.args.alpha,\
-                    c=0.0, N=self.config.CVaRSamples, bonus=0.0)
+                    c=self.config.args.opt, N=self.config.CVaRSamples, bonus=0.0)
             a_star = np.argmax(Q_nx, axis=-1)
 
         m = np.zeros((batch_size, self.config.nAtoms)) #target distribution
@@ -172,6 +172,7 @@ class C51():
                 Best performing parallel will be parallel over states
                 not action space, which is almosr 3x faster
         '''
+
         batch_size = x.shape[0] # Number of bathces, x of
 
         Q = np.zeros((batch_size, self.config.nA))
@@ -184,10 +185,9 @@ class C51():
                 cdf = np.cumsum(self.p[x, a, :], axis=-1) - np.expand_dims(bonus, axis=-1)
                 if bonus is None:
                     raise Exception("bonus and count are both None!")
+            cdf = np.clip(cdf, a_min=0, a_max=None)
 
-            cdf = np.clip(cdf, a_min=0, a_max=1)
-            cdf[:, -1] = 1 #Match the last one to 1
-
+            cdf[..., -1] = 1 #Match the last one to 1
             # Compute CVaR
             tau = np.expand_dims(np.random.uniform(0, alpha, N).reshape(N, 1), axis = 0)
             cdf = np.expand_dims(cdf, axis = 1)

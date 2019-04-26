@@ -37,6 +37,8 @@ parser.add_argument("--action_sigma",type=float, default=0.0, help="action stoch
 parser.add_argument("--ifCVaR", type=bool, default=False, help="if optimize for CVaR")
 parser.add_argument("--alpha", type=float, default=0.25, help="CVaR risk value")
 parser.add_argument("--action_delay", type=int, default=0, help="maximum number of steps to delay the action")
+parser.add_argument("--e_greedy", type=bool, default=False, help="if e-greedy")
+parser.add_argument("--opt", type=float, default=1.0, help="optimism")
 def make_env(args):
     register(
     id='simglucose-adult3-v0',
@@ -81,6 +83,7 @@ def _step(env, action, step, max_step, delay):
 def run(args):
     env = make_env(args)
     Config = config.config(env, args)
+    counts = np.zeros((Config.nS, Config.nA)) + 1
 
     if args.load_name is not None:
         load_file = pickle.load(open(args.load_name + '.p'), 'rb')
@@ -115,21 +118,24 @@ def run(args):
         #plt.pause(0.01)
         while step <= Config.max_step and not terminal:
 
-            if np.random.rand() <= epsilon:
+            if np.random.rand() <= epsilon and args.e_greedy:
                 action_id = np.random.randint(Config.nA)
             else:
                 if Config.args.ifCVaR:
-                    o = np.expand_dims([observation], axis=1)
-                    values = C51.CVaRopt(o, count=None,\
-                            alpha=Config.args.alpha, N=Config.CVaRSamples, c=0.0, bonus=0.0)
+                    o = np.expand_dims(observation, axis=-1)
+                    values = C51.CVaRopt(o, count=counts,\
+                            alpha=Config.args.alpha, N=Config.CVaRSamples, c=args.opt, bonus=0.0)
                 else:
                     values = C51.Q(observation)
                 action_id = np.random.choice(np.flatnonzero(values == values.max()))
+
             action = Config.get_action(action_id) # get action with/ without randomness
 
             delay = Config.get_delay()
             next_observation, reward, terminal, info, num_step = _step(env,\
                     action, step, Config.max_step, delay)
+
+            counts[observation, action_id] += 1
             step += num_step
             BG = next_observation.CGM
             next_observation = Config.process(next_observation, meal=info['meal'])
