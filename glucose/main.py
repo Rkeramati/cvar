@@ -124,7 +124,6 @@ def run(args):
                     o = np.expand_dims(observation, axis=-1)
                     values = C51.CVaRopt(o, count=counts,\
                             alpha=Config.args.alpha, N=Config.CVaRSamples, c=args.opt, bonus=0.0)
-                    print('CVaR Values:', values)
                 else:
                     values = C51.Q(observation)
                 action_id = np.random.choice(np.flatnonzero(values == values.max()))
