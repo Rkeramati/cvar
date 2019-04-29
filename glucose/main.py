@@ -39,6 +39,7 @@ parser.add_argument("--alpha", type=float, default=0.25, help="CVaR risk value")
 parser.add_argument("--action_delay", type=int, default=0, help="maximum number of steps to delay the action")
 parser.add_argument("--e_greedy", type=bool, default=False, help="if e-greedy")
 parser.add_argument("--opt", type=float, default=1.0, help="optimism")
+
 def make_env(args):
     register(
     id='simglucose-adult3-v0',
@@ -96,12 +97,14 @@ def run(args):
         replay_buffer = replay.Replay(Config, load=False)
         C51 = drl.C51(Config, ifCVaR=Config.args.ifCVaR, p=None, memory=replay_buffer)
         initial_ep = 0
+
     # Training Loop:
     for ep in range(initial_ep, Config.args.num_episode+initial_ep):
         terminal = False
         step = 0
         lr = Config.get_lr(ep)
 
+        # Epsilon for e-greedy:
         if ep%Config.eval_episode == 0:
             epsilon=0
         else:
@@ -112,10 +115,6 @@ def run(args):
         meal = 0
         observation = Config.process(env.reset(), meal=0) # Process will add stochasticity
                                                           # to the observed state
-        #for ii in range(Config.nA):
-        #    plt.clf()
-        #    plt.bar(C51.z, C51.p[observation, ii, :])
-        #plt.pause(0.01)
         while step <= Config.max_step and not terminal:
 
             if np.random.rand() <= epsilon and args.e_greedy:
@@ -125,6 +124,7 @@ def run(args):
                     o = np.expand_dims(observation, axis=-1)
                     values = C51.CVaRopt(o, count=counts,\
                             alpha=Config.args.alpha, N=Config.CVaRSamples, c=args.opt, bonus=0.0)
+                    print('CVaR Values:', values)
                 else:
                     values = C51.Q(observation)
                 action_id = np.random.choice(np.flatnonzero(values == values.max()))
@@ -145,7 +145,7 @@ def run(args):
                 terminal = True
 
             replay_buffer.add(observation, action_id, reward, terminal)
-            C51.train(size=Config.train_size, lr=lr, counts=None, opt=0.0)
+            C51.train(size=Config.train_size, lr=lr, counts=counts, opt=args.opt)
 
             observation = next_observation
 
