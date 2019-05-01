@@ -71,6 +71,7 @@ class C51():
         if not self.ifCVaR: #Normal
             Q_nx = np.sum(self.p[nx, :, :] * self.z, axis=-1)
             a_star = np.argmax(Q_nx, axis=-1)
+
         else: # take the argmax of CVaR
             Q_nx = self.CVaRopt(nx, counts, self.config.args.alpha,\
                     c=self.config.args.opt, N=self.config.CVaRSamples, bonus=0.0)
@@ -113,7 +114,6 @@ class C51():
                 else:
                     m[batch, l] += (u-b)
                     m[batch, u] += (b-l)
-
             self.p[x[batch], a[batch], :] = self.p[x[batch], a[batch], :] +\
                     lr * (m[batch, :] - self.p[x[batch], a[batch], :])
             # Map back to a probability distribtuion, sum = 1

@@ -18,8 +18,8 @@ class config():
         self.meal_bin = 3
 
         self.nAtoms = 51
-        self.Vmin = -50
-        self.Vmax = 5
+        self.Vmin = -40
+        self.Vmax = 15
         self.power_law = 1
 
         self.eval_episode = 10
