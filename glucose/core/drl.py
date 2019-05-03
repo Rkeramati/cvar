@@ -106,7 +106,7 @@ class C51():
             # Apply Optimism
             if count is not None:
                 cdf = np.cumsum(distribution[a], axis=-1) \
-                        - np.expand_dims(c/np.sqrt(count[:, a]), axis=-1)
+                        - np.expand_dims(c/np.sqrt(count[:, a] + 0.001), axis=-1)
             else:
                 cdf = np.cumsum(distribution[a], axis=-1) - np.expand_dims(bonus, axis=-1)
                 if bonus is None:
@@ -169,7 +169,7 @@ class C51():
                 if opt:
                     # Apply Optimism:
                     cdf = np.cumsum(next_distribution[a_star[batch]][batch, :], axis=-1) -\
-                        self.config.args.opt/np.sqrt(next_counts[batch, a_star[batch]])
+                        self.config.args.opt/np.sqrt(next_counts[batch, a_star[batch]] + 0.001)
                     cdf = np.clip(cdf, a_min=0, a_max=1) # Set less than 0 to 0
                     cdf[-1] = 1 #set the last to be equal to 1
                     cdf[1:] -= cdf[:-1]

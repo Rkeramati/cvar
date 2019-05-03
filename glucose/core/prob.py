@@ -49,10 +49,11 @@ class LogProb():
             gradient = self.dummy_optimizer.compute_gradients(self.loss_batch[i])
             grads, _ = list(zip(*gradient))
             norms = tf.global_norm(grads)
+            tf.summary.scalar("PG_norm_%d"%(i), norms)
             pg = self.lr * norms**2
             self.PG.append(pg)
-            tf.summary.histogram("PG_A%d"%(i), pg)
-            p_count = 1/(tf.math.exp(pg) - 1)
+            tf.summary.scalar("PG_A%d"%(i), pg)
+            p_count = 1/(tf.math.exp(pg) - 1 + 0.001)
             self.p_count.append(p_count)
             tf.summary.scalar("P_Count_A%d"%(i), p_count)
 

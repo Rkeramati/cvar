@@ -165,7 +165,9 @@ def run(args):
             if ep% Config.save_episode == 0:
                 save_file = {'ep': ep, 'returns': returns}
                 replay_buffer.save(args.save_name)
-                pickle.dump(save_file, open(args.save_name + '.p', 'wb'))
+                pickle_in = open(args.save_name + '.p', 'wb')
+                pickle.dump(save_file, pickle_in)
+                pickle_in.close()
                 saver.save(sess, args.save_name + '.ckpt')
 
 if __name__ == "__main__":

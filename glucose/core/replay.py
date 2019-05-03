@@ -53,7 +53,9 @@ class Replay():
                 'states':self.states, 'terminals': self.terminals,\
                 'count': self.count, 'current':self.current,
                 'counts': self.counts, 'next_counts': self.next_counts}
-        pickle.dump(save, open(name + '_replay.p', "wb"))
+        pickle_in = open(name + '_replat.p', 'wb')
+        pickle.dump(save, pickle_in)
+        pickle_in.close()
         print("Replay buffer saved, name:" + name + ".p")
 
     def load(self, name):
