@@ -16,8 +16,8 @@ class Replay():
             self.rewards = np.empty(self.size, dtype=np.float32)
             self.states = np.empty((self.size,config.state_size), dtype=np.float32)
             self.terminals = np.empty(self.size, dtype=np.bool)
-            self.next_counts = np.empty((self.size, self.config.nA), dtype=np.float32)
-            self.counts = np.empty((self.size, self.config.nA), dtype=np.float32)
+            self.next_counts = np.empty((self.size, config.nA), dtype=np.float32)
+            self.counts = np.empty((self.size, config.nA), dtype=np.float32)
 
             self.count = 0
             self.current = 0

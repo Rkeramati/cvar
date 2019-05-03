@@ -1,3 +1,4 @@
+import numpy as np
 
 def scenario_fun(): #Returning a Custom Scenario
     # Time hour + start time
@@ -40,7 +41,7 @@ def discounted_return(returns, gamma):
         ret = r + gamma * ret
     return ret
 
-def _step(env, action, step, max_step, delay):
+def custom_step(env, action, step, max_step, delay):
     reward = []
     num_step = 0
 

@@ -23,7 +23,7 @@ class C51():
             self.add_placeholder()
             self.build_model()
             self.add_optimizer()
-            self.C51summary = tf.summary.merge_all()
+            self.C51summary = tf.summary.merge_all(scope="C51")
 
     def add_placeholder(self):
         '''
@@ -101,6 +101,7 @@ class C51():
         batch_size = distribution[0].shape[0] # Number of bathces
 
         Q = np.zeros((batch_size, self.config.nA))
+
         for a in range(self.config.nA):
             # Apply Optimism
             if count is not None:
@@ -210,7 +211,7 @@ class C51():
             size = self.memory.count
             # print("warning: Train on all memory")
         x, a, r, nx, terminal, next_counts = self.memory.sample(size)
-        target_dist, target_mask = self.get_target(x, a, r, nx, terminal, sess)
+        target_dist, target_mask = self.get_target(x, a, r, nx, terminal, next_counts, sess)
 
         # Dictionary comprehension for feed_dict, since we have a list of tf.placeholder
         dic = {i: d for i, d in zip(self.target_distribution, target_dist)}

@@ -89,6 +89,7 @@ def run(args):
 
         # Training Loop:
         C51_loss = []
+        train_step = 0
         for ep in range(initial_ep, Config.args.num_episode+initial_ep):
             terminal = False
             step = 0
@@ -105,17 +106,18 @@ def run(args):
             Config.max_step = args.hour*60/(env.env.sensor.sample_time) # Compute the max step
             meal = 0
             observation = Config.process(env.reset(), meal=meal) # Process will add stochasticity
-            train_setp = 0                                       # to the observed state
+                                                                 # to the observed state
             while step <= Config.max_step and not terminal:
                 if np.random.rand() <= epsilon and args.e_greedy:
                     action_id = np.random.randint(Config.nA)
                 else:
                     if Config.args.ifCVaR:
                         o = np.expand_dims(observation, axis=0)
-                        counts = Counts.compute_counts(sess, o)
+                        counts, _ = Counts.compute_counts(sess, o)
+                        counts = np.array(counts)
                         distribution = C51.predict(sess, o)
-
-                        values = C51.CVaRopt(distribution, count=counts,\
+                        c = np.expand_dims(counts, axis=0)
+                        values = C51.CVaRopt(distribution, count=c,\
                                 alpha=Config.args.alpha, N=Config.CVaRSamples, c=args.opt, bonus=0.0)
                     else:
                         raise Exception("Not Implemented!")
@@ -123,12 +125,15 @@ def run(args):
                     action_id = np.random.choice(np.flatnonzero(values == values.max()))
                 action = Config.get_action(action_id) # get action with/ without randomness
                 delay = Config.get_delay()
-                next_observation, reward, terminal, info, num_step = _step(env,\
+                next_observation, reward, terminal, info, num_step = custom_step(env,\
                         action, step, Config.max_step, delay)
 
                 step += num_step
                 BG = next_observation.CGM
                 next_observation = Config.process(next_observation, meal=info['meal'])
+                no = np.expand_dims(next_observation, axis=0)
+                next_counts, counts_summary = Counts.compute_counts(sess, no)
+                next_counts = np.array(next_counts)
                 episode_return.append(reward)
                 if step >= Config.max_step:
                     terminal = True
@@ -137,10 +142,12 @@ def run(args):
                         counts, next_counts)
                 # Training:
                 l, summary = C51.train(sess=sess, size=Config.train_size, opt=args.opt)
-                Counts.train(sess, o, np.expand_dims(action, axis=0))
+                summary_counts = Counts.train(sess, o, np.expand_dims(action, axis=0))
 
                 if ep%Config.summary_write_episode == 0 and summary is not None:
                     summary_writer.add_summary(summary, train_step)
+                    summary_writer.add_summary(summary_counts, train_step)
+                    summary_writer.add_summary(counts_summary, train_step)
                 train_step += 1
                 if l is not None:
                     C51_loss.append(l)
