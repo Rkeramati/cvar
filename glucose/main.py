@@ -11,7 +11,7 @@ from simglucose.controller.base import Controller, Action
 # Custom imports
 from utils.custom import *
 from utils.gymenv import T1DSimEnv
-from core import config, drl, replay
+from core import config, drl, replay, prob
 
 # Others
 #import matplotlib.pyplot as plt
@@ -21,6 +21,8 @@ from datetime import datetime
 import pickle
 import gym
 from gym.envs.registration import register
+import tensorflow as tf
+import os
 
 import argparse
 
@@ -57,108 +59,114 @@ def make_env(args):
 
     return env
 
-def _step(env, action, step, max_step, delay):
-    reward = []
-    num_step = 0
-
-    # Action Delay
-    if delay > 0:
-        delayed = 0; terminal = False
-        while delayed <= delay and not terminal:
-            obs, rew, terminal, info = env.step([0, 0])
-            num_step += 1
-            delayed += 1
-    # Action
-    obs, rew, terminal, info = env.step(action)
-    num_step += 1
-    reward.append(rew)
-    meal = info['meal']
-    # Till next meal
-    while meal <= 0 and not terminal and step + num_step <= max_step:
-        obs, rew, terminal, info = env.step([0, 0])
-        meal = info['meal']
-        num_step += 1
-        reward.append(rew)
-    return obs, np.mean(reward), terminal, info, num_step
-
 def run(args):
-    env = make_env(args)
-    Config = config.config(env, args)
-    counts = np.zeros((Config.nS, Config.nA)) + 1
+    with tf.Session() as sess:
+        env = make_env(args)
+        Config = config.config(env, args)
 
-    if args.load_name is not None:
-        load_file = pickle.load(open(args.load_name + '.p'), 'rb')
-        replay_buffer = replay.Replay(Config, load=True, name=args.load_name)
-        C51 = drl.C51(Config, ifCVaR=Config.args.ifCVaR, p=load_file["p"], memory=replay_buffer)
-        returns = load_file["returns"]
-        initial_ep = load_file["ep"]
-    else:
-        returns = np.zeros(Config.args.num_episode)
-        replay_buffer = replay.Replay(Config, load=False)
-        C51 = drl.C51(Config, ifCVaR=Config.args.ifCVaR, p=None, memory=replay_buffer)
-        initial_ep = 0
-
-    # Training Loop:
-    for ep in range(initial_ep, Config.args.num_episode+initial_ep):
-        terminal = False
-        step = 0
-        lr = Config.get_lr(ep)
-
-        # Epsilon for e-greedy:
-        if ep%Config.eval_episode == 0:
-            epsilon=0
+        # TODO: initializes count network as well
+        if args.load_name is not None:
+            load_file = pickle.load(open(args.load_name + '.p', 'rb'))
+            replay_buffer = replay.Replay(Config, load=True, name=args.load_name)
+            C51 = drl.C51(Config, ifCVaR=Config.args.ifCVaR, memory=replay_buffer)
+            Counts = prob.LogProb(Config)
+            returns = load_file["returns"]
+            initial_ep = load_file["ep"]
+            saver = tf.train.Saver()
+            saver.restore(sess, args.load_name + '.ckpt')
+            print("[*] TF model restored")
         else:
-            epsilon = Config.get_epsilon(ep)
+            returns = np.zeros((Config.args.num_episode, 2))
+            replay_buffer = replay.Replay(Config, load=False)
+            C51 = drl.C51(Config, ifCVaR=Config.args.ifCVaR, memory=replay_buffer)
+            Counts = prob.LogProb(Config)
+            initial_ep = 0
+            saver = tf.train.Saver()
+            sess.run(tf.initializers.global_variables())
+            print("[*] TF model initialized")
 
-        episode_return = []
-        Config.max_step = args.hour*60/(env.env.sensor.sample_time) # Compute the max step
-        meal = 0
-        observation = Config.process(env.reset(), meal=0) # Process will add stochasticity
-                                                          # to the observed state
-        while step <= Config.max_step and not terminal:
+        summary_writer = tf.summary.FileWriter(args.save_name + '/summary', sess.graph)
 
-            if np.random.rand() <= epsilon and args.e_greedy:
-                action_id = np.random.randint(Config.nA)
+        # Training Loop:
+        C51_loss = []
+        for ep in range(initial_ep, Config.args.num_episode+initial_ep):
+            terminal = False
+            step = 0
+            # TODO: Currently using fixed lr for Adam
+            lr = Config.get_lr(ep)
+
+            # Epsilon for e-greedy:
+            if ep%Config.eval_episode == 0:
+                epsilon=0
             else:
-                if Config.args.ifCVaR:
-                    o = np.expand_dims(observation, axis=-1)
-                    values = C51.CVaRopt(o, count=counts,\
-                            alpha=Config.args.alpha, N=Config.CVaRSamples, c=args.opt, bonus=0.0)
+                epsilon = Config.get_epsilon(ep)
+
+            episode_return = []
+            Config.max_step = args.hour*60/(env.env.sensor.sample_time) # Compute the max step
+            meal = 0
+            observation = Config.process(env.reset(), meal=meal) # Process will add stochasticity
+            train_setp = 0                                       # to the observed state
+            while step <= Config.max_step and not terminal:
+                if np.random.rand() <= epsilon and args.e_greedy:
+                    action_id = np.random.randint(Config.nA)
                 else:
-                    values = C51.Q(observation)
-                action_id = np.random.choice(np.flatnonzero(values == values.max()))
+                    if Config.args.ifCVaR:
+                        o = np.expand_dims(observation, axis=0)
+                        counts = Counts.compute_counts(sess, o)
+                        distribution = C51.predict(sess, o)
 
-            action = Config.get_action(action_id) # get action with/ without randomness
+                        values = C51.CVaRopt(distribution, count=counts,\
+                                alpha=Config.args.alpha, N=Config.CVaRSamples, c=args.opt, bonus=0.0)
+                    else:
+                        raise Exception("Not Implemented!")
+                        values = C51.Q(observation)
+                    action_id = np.random.choice(np.flatnonzero(values == values.max()))
+                action = Config.get_action(action_id) # get action with/ without randomness
+                delay = Config.get_delay()
+                next_observation, reward, terminal, info, num_step = _step(env,\
+                        action, step, Config.max_step, delay)
 
-            delay = Config.get_delay()
-            next_observation, reward, terminal, info, num_step = _step(env,\
-                    action, step, Config.max_step, delay)
+                step += num_step
+                BG = next_observation.CGM
+                next_observation = Config.process(next_observation, meal=info['meal'])
+                episode_return.append(reward)
+                if step >= Config.max_step:
+                    terminal = True
+                # TODO: egreedy eval ep should not be trained on
+                replay_buffer.add(observation, action_id, reward, terminal,\
+                        counts, next_counts)
+                # Training:
+                l, summary = C51.train(sess=sess, size=Config.train_size, opt=args.opt)
+                Counts.train(sess, o, np.expand_dims(action, axis=0))
 
-            counts[observation, action_id] += 1
-            step += num_step
-            BG = next_observation.CGM
-            next_observation = Config.process(next_observation, meal=info['meal'])
+                if ep%Config.summary_write_episode == 0 and summary is not None:
+                    summary_writer.add_summary(summary, train_step)
+                train_step += 1
+                if l is not None:
+                    C51_loss.append(l)
+                    returns[ep, 1] = l
+                observation = next_observation
 
-            episode_return.append(reward)
-            if step >= Config.max_step:
-                terminal = True
 
-            replay_buffer.add(observation, action_id, reward, terminal)
-            C51.train(size=Config.train_size, lr=lr, counts=counts, opt=args.opt)
-
-            observation = next_observation
-
-        returns[ep] = discounted_return(episode_return, Config.args.gamma)
-        if ep%Config.print_episode == 0 and not ep%Config.eval_episode==0:
-            print("Training.  Episode ep:%3d, Discounted Return = %g, Epsilon = %g, BG=%g"\
-                    %(ep, returns[ep], epsilon, BG))
-        if ep % Config.eval_episode == 0:
-            print("Evaluation Episode ep:%3d, Discounted Return = %g, BG = %g"%(ep, returns[ep], BG))
-        if ep% Config.save_episode == 0:
-            save_file = {'p': C51.p, 'ep': ep, 'returns': returns}
-            pickle.dump(save_file, open(args.save_name + '.p', 'wb'))
+            returns[ep, 0] = discounted_return(episode_return, Config.args.gamma)
+            if ep%Config.print_episode == 0 and not ep%Config.eval_episode==0:
+                print("Training.  Episode ep:%3d, Discounted Return = %g, Epsilon = %g, BG=%g, C51 average loss=%g"\
+                        %(ep, returns[ep, 0], epsilon, BG, np.mean(C51_loss)))
+            if ep % Config.eval_episode == 0:
+                print("Evaluation Episode ep:%3d, Discounted Return = %g, BG = %g"\
+                        %(ep, returns[ep, 0], BG))
+            if ep% Config.save_episode == 0:
+                save_file = {'ep': ep, 'returns': returns}
+                replay_buffer.save(args.save_name)
+                pickle.dump(save_file, open(args.save_name + '.p', 'wb'))
+                saver.save(sess, args.save_name + '.ckpt')
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    if args.e_greedy:
+        args.opt = 0
+        print("Warning: set the opt = 0 because e_greedy!")
+    if not os.path.exists(args.save_name + '/summary'):
+            os.makedirs(args.save_name + '/summary')
     run(args)
 

@@ -4,6 +4,14 @@ class config():
     # Config file for C51 algorithm
     def __init__(self, env, args):
         print("Warning: Max Bolus/4")
+        # TF config
+        self.state_size = 1 # size of the state space
+        self.num_layers = 2 # Number of hidden layer
+        self.layer_size = [32, 32] # Hidden Layer size
+        self.logprob_layer = [32, 32, 32] # RealNVP hidden layers
+        self.state_size = 2
+        self.action_size = 2
+
         self.max_basal = env.action_space.high[1] # max of basal
         self.min_basal = env.action_space.low[1] # min of basal
         self.max_bolus = env.action_space.high[0]/4 # max of bolus
@@ -13,7 +21,8 @@ class config():
         self.bolus_bin = 5
 
         self.state_bin = 50
-        self.max_state = 500
+        self.max_state = 800
+        self.min_state = 0
         self.max_meal = 60
         self.meal_bin = 3
 
@@ -22,9 +31,10 @@ class config():
         self.Vmax = 15
         self.power_law = 1
 
-        self.eval_episode = 10
-        self.save_episode = 100
+        self.eval_episode = 5
+        self.save_episode = 10
         self.print_episode = 1
+        self.summary_write_episode = 1
 
         self.max_e = 0.9 # Exploration max epsilon
         self.min_e = 0.1
@@ -67,17 +77,16 @@ class config():
         return total_action
 
     def process(self, state, meal):
+        out = np.zeros(self.state_size)
+        out[0] = (state.CGM - self.max_state/2)/(self.max_state) # between -0.5, 0.5 for CGM
+        out[1] = meal/(2 * self.meal_size) # Between 0 - 0.5 for meal amount
 
-        state = min(int(state.CGM/self.bin_size), self.state_bin)
-        # Randomize the state observation
-        if np.random.rand() <= self.args.delta_state:
-            if np.random.rand() <= 0.5:
-                state = max(0, state - 1)
-            else:
-                state = min(self.state_bin, state + 1)
-        meal = min(int(meal/self.meal_size), self.meal_bin)
-        idx = state + meal * self.meal_bin #state idx given mean and state
-        return idx
+        if abs(out[0]) > 0.5:
+            print("warning: State processing produced CGM: %g"%(out[0]))
+        if abs(out[1]) > 0.5:
+            print("warning: State processing produced Meal: %g"%(out[1]))
+
+        return out
 
     def get_delay(self):
         # Return the action delay
@@ -85,3 +94,7 @@ class config():
                 * self.args.action_delay) - 1
         return max(0, step)
 
+    def action_process(self, a):
+        max_action = np.array([[self.max_bolus, self.max_basal]])
+        a = (a - max_action/2)/max_action
+        return a

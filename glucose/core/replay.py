@@ -14,17 +14,21 @@ class Replay():
         else:
             self.actions = np.empty(self.size, dtype=np.int32)
             self.rewards = np.empty(self.size, dtype=np.float32)
-            self.states = np.empty(self.size, dtype=np.int32)
+            self.states = np.empty((self.size,config.state_size), dtype=np.float32)
             self.terminals = np.empty(self.size, dtype=np.bool)
+            self.next_counts = np.empty((self.size, self.config.nA), dtype=np.float32)
+            self.counts = np.empty((self.size, self.config.nA), dtype=np.float32)
 
             self.count = 0
             self.current = 0
-    def add(self, state, action, reward, terminal):
+    def add(self, state, action, reward, terminal, counts, next_counts):
          '''Add a new example to the replay memory'''
          self.actions[self.current] = action
          self.rewards[self.current] = reward
-         self.states[self.current] = state
+         self.states[self.current, :] = state
          self.terminals[self.current] = terminal
+         self.counts[self.current, :] = counts
+         self.next_counts[self.current, :] = next_counts
 
          self.count = max(self.count, self.current + 1)
          self.current = (self.current + 1) % self.size # Pointer to the current state
@@ -33,18 +37,22 @@ class Replay():
         index = np.random.randint(low=0, high=self.count-1, size=size) # Random Index
 
         action = self.actions[index]
-        state = self.states[index]
+        state = self.states[index, :]
         reward = self.rewards[index]
         terminal = self.terminals[index]
-        next_state = self.states[index + 1]
+        next_state = self.states[index + 1, :]
+        counts = self.counts[index, :]
+        next_counts = self.next_counts[index, :]
 
         # Terminal state doesn't have a next state, DRL takes care of this
 
-        return state, action, reward, next_state, terminal
+        return state, action, reward, next_state, terminal, next_counts
+
     def save(self, name):
         save = {'actions': self.actions, 'rewards': self.rewards,\
                 'states':self.states, 'terminals': self.terminals,\
-                'count': self.count, 'current':self.current}
+                'count': self.count, 'current':self.current,
+                'counts': self.counts, 'next_counts': self.next_counts}
         pickle.dump(save, open(name + '_replay.p', "wb"))
         print("Replay buffer saved, name:" + name + ".p")
 
@@ -54,7 +62,8 @@ class Replay():
         self.rewards = load['rewards']
         self.states = load['states']
         self.terminals = load['terminals']
-        self.count = load['counts']; self.current = load['current']
+        self.count = load['count']; self.current = load['current']
+        self.counts = load['counts']; next_counts = load['next_counts']
 
         print("Replay buffer load")
 
