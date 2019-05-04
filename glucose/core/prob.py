@@ -37,6 +37,8 @@ class LogProb():
                 shape = [None, self.input_dim], name="input")
         self.count_input = tf.placeholder(dtype=tf.float64,\
                 shape=[self.config.nA, self.input_dim])
+        self.episode = tf.placeholder(dtype=tf.float64, shape=(), name="episode")
+
     def _build_model(self):
         '''
             Build the real NVP model
@@ -80,17 +82,17 @@ class LogProb():
             pg = self.lr * norms**2
             self.PG.append(pg)
             tf.summary.scalar("PG_A%d"%(i), pg)
-            p_count = 1/(tf.math.exp(pg) - 1 + 0.001)
+            p_count = 1/(tf.math.exp(0.01*pg/tf.math.sqrt(self.episode)) - 1 + 0.001)
             self.p_count.append(p_count)
             tf.summary.scalar("P_Count_A%d"%(i), p_count)
 
-    def compute_counts(self, sess, x):
+    def compute_counts(self, sess, x, ep):
         # X shape : [nA, state_dim]
         x = np.tile(x, (self.config.nA, 1))
         a = self.config.action_process(self.config.action_map)
         nvp_input = np.concatenate((x, a), axis = 1) # Input = [x,a] = [batch size=nA, input_dim]
         counts, summary = sess.run([self.p_count, self.counts_summary],\
-                feed_dict={self.count_input: nvp_input})
+                feed_dict={self.count_input: nvp_input, self.episode: ep})
         return counts, summary
 
     def train(self, sess, x, a):

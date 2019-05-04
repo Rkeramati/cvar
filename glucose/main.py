@@ -210,7 +210,7 @@ def run(args):
             while step <= Config.max_step and not terminal:
                 if Config.args.ifCVaR:
                     o = np.expand_dims(observation, axis=0)
-                    counts, _ = Counts.compute_counts(sess, o)
+                    counts, _ = Counts.compute_counts(sess, o, ep)
                     counts = np.array(counts)
                     distribution = C51.predict(sess, o)
                     c = np.expand_dims(counts, axis=0)
@@ -229,7 +229,7 @@ def run(args):
                 BG = next_observation.CGM
                 next_observation = Config.process(next_observation, meal=info['meal'])
                 no = np.expand_dims(next_observation, axis=0)
-                next_counts, counts_summary = Counts.compute_counts(sess, no)
+                next_counts, counts_summary = Counts.compute_counts(sess, no, ep)
                 next_counts = np.array(next_counts)
                 episode_return.append(reward)
                 if step >= Config.max_step:
@@ -253,12 +253,9 @@ def run(args):
 
 
             returns[ep, 0] = discounted_return(episode_return, Config.args.gamma)
-            if ep%Config.print_episode == 0 and not ep%Config.eval_episode==0:
-                print("Training.  Episode ep:%3d, Discounted Return = %g, Epsilon = %g, BG=%g, C51 average loss=%g"\
-                        %(ep, returns[ep, 0], epsilon, BG, np.mean(C51_loss)))
-            if ep % Config.eval_episode == 0:
-                print("Evaluation Episode ep:%3d, Discounted Return = %g, BG = %g"\
-                        %(ep, returns[ep, 0], BG))
+            if ep%Config.print_episode == 0:
+                print("Training.  Episode ep:%3d, Discounted Return = %g, BG=%g, C51 average loss=%g"\
+                        %(ep, returns[ep, 0], BG, np.mean(C51_loss)))
             if ep% Config.save_episode == 0:
                 save_file = {'ep': ep, 'returns': returns}
                 replay_buffer.save(args.save_name)

@@ -5,10 +5,9 @@ class config():
     def __init__(self, env, args):
         print("Warning: Max Bolus/4")
         # TF config
-        self.state_size = 1 # size of the state space
         self.num_layers = 2 # Number of hidden layer
         self.layer_size = [32, 32] # Hidden Layer size
-        self.logprob_layers = [32, 32, 32] # RealNVP hidden layers
+        self.logprob_layers = [64, 64, 64] # RealNVP hidden layers
         self.state_size = 2
         self.action_size = 2
 
