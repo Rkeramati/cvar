@@ -2,19 +2,23 @@ import numpy as np
 import tensorflow as tf
 
 class C51():
-    # C51 Class, for tabular setting
+    # C51 Class, for Function Approximation Setting
     def __init__(self, config, memory, ifCVaR = False):
         '''
-        args: ifCVaR -- if thisi class is being used to find the CVaR policy
-                        It is important in function observe, in order to use argmax of expectation
+        args: ifCVaR -- if this class is being used to find the CVaR policy
+                        It is important in function get_target, in order to use argmax of expectation
                         or argmax of CVaR to find the target distribution
               memory -- Class of replay as a replay memory, either empty or loaded already
               config -- config class containing all constants and hyperparameters
+
+              Architecture:
+                  Input -> Dense x [X] -> List of size nA, each size nAtoms
+                  self.config.num_layers, self.config.layer_size
         '''
         self.ifCVaR = ifCVaR
         self.config = config
         self.memory = memory
-
+        # Atoms:
         self.dz = (self.config.Vmax - self.config.Vmin)/(self.config.nAtoms-1)
         self.z = np.arange(self.config.nAtoms) * self.dz + self.config.Vmin
 
@@ -38,7 +42,7 @@ class C51():
                 name="mask_%d"%(i)) for i in range(self.config.nA)]
     def build_model(self):
         '''
-            Desne model, state_size -> hidden_layer 1 -> hidden_layer 2 --> [nAtoms] of size nA
+            Desne model"" state_size -> hidden_layer 1 -> hidden_layer 2 --> [nAtoms] of size nA
         '''
         out = self.x
         for layer in range(self.config.num_layers):
@@ -61,27 +65,27 @@ class C51():
         '''
         self.loss = 0
         for i in range(self.config.nA):
+            # Only train on the taken action: i.e mask = 1
             self.loss += tf.reduce_sum(self.target_distribution[i] * tf.log(self.distribution[i]),\
                     axis=-1) * self.target_mask[i]
         self.loss = -tf.reduce_mean(self.loss, axis=-1)
         tf.summary.scalar("loss", self.loss)
+        # TODO: Maybe add learning rate decay
         self.optimizer = tf.train.AdamOptimizer(learning_rate=0.001, name="Adam")
         grads_and_vars = self.optimizer.compute_gradients(self.loss)
         grads, _ = list(zip(*grads_and_vars))
         norms = tf.global_norm(grads)
         tf.summary.scalar('gradient_norm', norms)
+        # TODO: Maybe add gradient clipping
         self.train_op = self.optimizer.apply_gradients(grads_and_vars)
 
     def predict(self, sess, state):
+        # input satate = [batch, state_size]
+        # Get the distribtuion (pdf) of the input_state
         out = sess.run(self.distribution, feed_dict={self.x: state})
         return out
 
-    def get_counts(self, sess, nx):
-        # TODO: Counts should be saved in the memory
-        batch_size = nx.shape[0]
-        return [np.ones(batch_size)*1e5 for i in range(self.config.nA)]
-
-    def CVaRopt(self, distribution, count, alpha, c=0.1, N=20, bonus=None):
+    def CVaRopt(self, distribution, count, alpha, c, N=20, bonus=None):
         '''
             compute CVaR after a optimisctic shift on the ECDF
             args
@@ -90,6 +94,8 @@ class C51():
                 alpha -- CVaR risk value
                 c -- optimism constant, float
                 N -- number of samples to compute the CVaR
+                bonus -- in case for fix bounes
+                    For computin CVaR, pass None to count and 0 to bonus, or pass c=0
         '''
         '''
             parallelization Comment:
@@ -124,18 +130,18 @@ class C51():
             Q[:, a] = np.mean(values, axis=-1)
         return Q
 
-    def get_target(self, x, a, r, nx, terminal, next_counts, sess, opt=True):
+    def get_target(self, x, a, r, nx, terminal, next_counts, sess):
         '''
-            Observe the (x, a, r, nx, terminal) and update the distribution
-            toward the target distribution
+            Compute the target distribution of (x, a, r, nx, terminal)
             x -- state: shape [Batch Size, state_dim]
             a -- action: shape [Batch Size]
             r -- reward: shape [Batch Size]
             nx -- next state: shape [Batch Size, state_dim]
             terminal -- bool terminal: shape [Batch Size]
-            next_counts --
+            next_counts -- Pesudo Count for the next_State, [Batch size, nA]
             sess -- tf session
-            opt -- if use optimism
+
+            Comment: For e_greedy opt = 0, no shift will apply: This will be checked by args
         '''
         '''
             Parallelization Comment:
@@ -149,33 +155,32 @@ class C51():
         # Choose the optimal action a*
         next_distribution = self.predict(sess, nx)
 
-        if not self.ifCVaR: #Normal
+        if not self.ifCVaR: # Normal Expectation
             Q_nx = [np.sum(next_distribution[a] * self.z, axis=-1) for a in range(self.config.nA)]
             a_star = np.argmax(np.array(Q_nx), axis=-1)
 
         else: # take the argmax of CVaR
             Q_nx = self.CVaRopt(next_distribution, next_counts, self.config.args.alpha,\
                     c=self.config.args.opt, N=self.config.CVaRSamples, bonus=0.0)
+            # TODO: Randomize per row the argmax selection
             a_star = np.argmax(Q_nx, axis=-1)
 
-       # Target Distribution
+        # Target Distribution: List of size nA, each [Batch Size, nAtoms]
         m = [np.zeros((batch_size, self.config.nAtoms)) for i in range(self.config.nA)]
+        # Mask: List of size nA each size batch size, if mask[a][i] = 1 means action a was taken in batch i
         mask = [np.zeros(batch_size) for i in range(self.config.nA)]
         for batch in range(batch_size):
             # Setting the mask
             mask[a[batch]][batch] = 1
             # setting the target distribution
             if not terminal[batch]:
-                if opt:
-                    # Apply Optimism:
-                    cdf = np.cumsum(next_distribution[a_star[batch]][batch, :], axis=-1) -\
+                # Apply Optimism:
+                cdf = np.cumsum(next_distribution[a_star[batch]][batch, :], axis=-1) -\
                         self.config.args.opt/np.sqrt(next_counts[batch, a_star[batch]] + 0.001)
-                    cdf = np.clip(cdf, a_min=0, a_max=1) # Set less than 0 to 0
-                    cdf[-1] = 1 #set the last to be equal to 1
-                    cdf[1:] -= cdf[:-1]
-                    optimistic_pdf = cdf # Set the optimisitc pdf
-                else:
-                    optimistic_pdf = next_distribution[a_star[batch]][batch, :]
+                cdf = np.clip(cdf, a_min=0, a_max=1) # Set less than 0 to 0
+                cdf[-1] = 1 #set the last to be equal to 1
+                cdf[1:] -= cdf[:-1]
+                optimistic_pdf = cdf # Set the optimisitc pdf
 
                 # Distribute the probability mass
                 tz = np.clip(r[batch] + self.config.args.gamma * self.z,\
@@ -203,7 +208,7 @@ class C51():
         return m, mask
 
     def train(self, sess, size, opt):
-        # Train on "size" samples, opt: optimism constant, counts: visitation count
+        # Train on "size" samples, opt: optimism constant
         if size > self.memory.count:
             if self.memory.count <=1 :
                 print("Warning: not enough Smaples! Skipped Training!")
@@ -223,24 +228,3 @@ class C51():
         # Train
         _, loss, summary = sess.run([self.train_op, self.loss, self.C51summary], feed_dict=dic)
         return loss, summary
-
-    def CVaR(self, x, alpha, N=20):
-        '''
-            Return the CvaR at level alpha for state x
-            args
-                x -- int, state
-                alpha -- float, risk level
-                N -- int, number of samples
-            this function only works with 1D input
-        '''
-        # Return the CVaR based on Sampling N times
-        Q = np.zeros(self.config.nA)
-        for a in range(self.config.nA):
-            cdf = np.tile(np.cumsum(self.p[x, a, :]), N).reshape(N, self.config.nAtoms)
-            values = np.zeros(N)
-            tau = np.random.uniform(0, alpha, N).reshape(N, 1)
-            idx = np.argmax((cdf > tau) * 1.0, axis = 1)
-            values = self.z[idx]
-            Q[a] = np.mean(values)
-        return Q
-

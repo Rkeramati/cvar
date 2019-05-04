@@ -12,6 +12,7 @@ class config():
         self.state_size = 2
         self.action_size = 2
 
+        # Action space configuration
         self.max_basal = env.action_space.high[1] # max of basal
         self.min_basal = env.action_space.low[1] # min of basal
         self.max_bolus = env.action_space.high[0]/4 # max of bolus
@@ -19,23 +20,25 @@ class config():
 
         self.basal_bin = 1
         self.bolus_bin = 5
+        self.power_law = 1
 
-        self.state_bin = 50
+        # Normalizing state space
         self.max_state = 800
         self.min_state = 0
         self.max_meal = 60
-        self.meal_bin = 3
 
+        # C51
         self.nAtoms = 51
         self.Vmin = -40
         self.Vmax = 15
-        self.power_law = 1
 
+        # Summary
         self.eval_episode = 5
         self.save_episode = 10
         self.print_episode = 1
         self.summary_write_episode = 1
 
+        # Exploration
         self.max_e = 0.9 # Exploration max epsilon
         self.min_e = 0.1
         self.max_lr = 0.9 # Maximum learnig rate
@@ -44,19 +47,16 @@ class config():
 
         #self.schedule = [0.9, 0.1, 2] # Epsilon greedy exploration scheduelce
 
-        self.nS = self.state_bin * self.meal_bin
-        self.bin_size = (self.max_state - 0)/self.state_bin
-        self.meal_size = (self.max_meal - 0)/self.meal_bin
-
+        # Building Action Space
         self.bolus_map = np.linspace(self.min_bolus, self.max_bolus, self.bolus_bin)
         self.basal_map = np.linspace(self.min_basal, self.max_basal, self.basal_bin)
         self.action_map = np.transpose([np.tile(self.bolus_map, len(self.basal_map)), np.repeat(self.basal_map, len(self.bolus_map))])
         self.nA = self.action_map.shape[0]
 
-        self.CVaRSamples = 20
+        self.CVaRSamples = 20 # number of samples for CVaR
 
         self.train_size=32
-        self.memory_size = 10000
+        self.memory_size = 10000 # Size of the replay memory
 
         self.args = args
 
@@ -79,7 +79,7 @@ class config():
     def process(self, state, meal):
         out = np.zeros(self.state_size)
         out[0] = (state.CGM - self.max_state/2)/(self.max_state) # between -0.5, 0.5 for CGM
-        out[1] = meal/(2 * self.meal_size) # Between 0 - 0.5 for meal amount
+        out[1] = meal/(2 * self.max_meal) # Between 0 - 0.5 for meal amount
 
         if abs(out[0]) > 0.5:
             print("warning: State processing produced CGM: %g"%(out[0]))
