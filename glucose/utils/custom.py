@@ -1,3 +1,5 @@
+import numpy as np
+from simglucose.analysis.risk import risk_index
 
 def scenario_fun(): #Returning a Custom Scenario
     # Time hour + start time
@@ -39,3 +41,43 @@ def discounted_return(returns, gamma):
     for r in reversed(returns):
         ret = r + gamma * ret
     return ret
+
+def custom_step(env, action, step, max_step, delay, BGs, Risks, ep):
+     reward = []
+     num_step = 0
+
+     # Action Delay
+     if delay > 0:
+         delayed = 0; terminal = False
+         while delayed <= delay and not terminal:
+             obs, rew, terminal, info = env.step([0, 0])
+             BG = obs.CGM
+             _, _, risk = risk_index([BG], 1)
+             BGs[ep, step+num_step-1] = BG
+             Risks[ep, step+num_step-1] = risk
+
+             num_step += 1
+             delayed += 1
+     # Action
+     obs, rew, terminal, info = env.step(action)
+     BG = obs.CGM
+
+     _, _, risk = risk_index([BG], 1)
+     BGs[ep, step+num_step-1] = BG
+     Risks[ep, step+num_step-1] = risk
+
+     num_step += 1
+     reward.append(rew)
+     meal = info['meal']
+     # Till next meal
+     while meal <= 0 and not terminal and step + num_step <= max_step:
+         obs, rew, terminal, info = env.step([0, 0])
+         meal = info['meal']
+         BG = obs.CGM
+         _, _, risk = risk_index([BG], 1)
+         BGs[ep, step+num_step-1] = BG
+         Risks[ep, step+num_step-1] = risk
+
+         num_step += 1
+         reward.append(rew)
+     return obs, np.mean(reward), terminal, info, num_step, BGs, Risks

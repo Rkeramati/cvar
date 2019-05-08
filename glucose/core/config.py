@@ -26,13 +26,20 @@ class config():
         self.save_episode = 100
         self.print_episode = 1
 
-        self.max_e = 0.9 # Exploration max epsilon
-        self.min_e = 0.1
+        #self.max_e = 0.9 # Exploration max epsilon
+        #self.min_e = 0.1
         self.max_lr = 0.9 # Maximum learnig rate
         self.min_lr = 0.5
-        self.episode_ratio = 2 # When to reach the minimum in episode for alpha and ep schedule
+        #self.episode_ratio = 2 # When to reach the minimum in episode for alpha and ep schedule
 
-        #self.schedule = [0.9, 0.1, 2] # Epsilon greedy exploration scheduelce
+        self.schedule = {1: [0.9, 0.1, 2], 2: [0.9, 0.05, 4],\
+                3: [0.9, 0.05, 6], 4: [0.9, 0.3, 4]} # Epsilon greedy exploration scheduelce
+
+        self.max_e, self.min_e, self.episode_ratio = self.schedule[args.e_greedy_option]
+
+        self.exp_decay = {1: [0.9, 0.99, 5], 2:[0.9, 0.99, 20], 3:[0.9, 0.99, 2],\
+                        3: [0.9, 0.99, 30], 4:[0.5, 0.99, 5]}
+        self.start_e, self.decay, self.decay_step = self.exp_decay[args.e_greedy_option]
 
         self.nS = self.state_bin * self.meal_bin
         self.bin_size = (self.max_state - 0)/self.state_bin
@@ -55,9 +62,12 @@ class config():
         alpha = max(self.min_lr, self.max_lr + ep *slope)
         return alpha
 
-    def get_epsilon(self, ep):
-        slope = (-self.max_e + self.min_e)/(self.args.num_episode/self.episode_ratio)
-        e = max(self.min_e, self.max_e + ep *slope)
+    def get_epsilon(self, ep, decay=False):
+        if not decay:
+            slope = (-self.max_e + self.min_e)/(self.args.num_episode/self.episode_ratio)
+            e = max(self.min_e, self.max_e + ep *slope)
+        else:
+            e = self.start_e * self.decay**(ep/self.decay_step)
         return e
 
     def get_action(self, action_id):
