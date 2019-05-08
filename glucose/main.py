@@ -210,7 +210,7 @@ def run(args):
             while step <= Config.max_step and not terminal:
                 if Config.args.ifCVaR:
                     o = np.expand_dims(observation, axis=0)
-                    counts, _ = Counts.compute_counts(sess, o, ep)
+                    counts, _ = Counts.compute_counts(sess, o, train_step)
                     counts = np.array(counts)
                     distribution = C51.predict(sess, o)
                     c = np.expand_dims(counts, axis=0)
@@ -229,7 +229,7 @@ def run(args):
                 BG = next_observation.CGM
                 next_observation = Config.process(next_observation, meal=info['meal'])
                 no = np.expand_dims(next_observation, axis=0)
-                next_counts, counts_summary = Counts.compute_counts(sess, no, ep)
+                next_counts, counts_summary = Counts.compute_counts(sess, no, train_step)
                 next_counts = np.array(next_counts)
                 episode_return.append(reward)
                 if step >= Config.max_step:
