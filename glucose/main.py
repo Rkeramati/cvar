@@ -7,6 +7,7 @@ from simglucose.simulation.scenario_gen import RandomScenario
 from simglucose.simulation.scenario import CustomScenario
 from simglucose.simulation.sim_engine import SimObj, sim, batch_sim
 from simglucose.controller.base import Controller, Action
+from simglucose.analysis.risk import risk_index
 
 # Custom imports
 from utils.custom import *
@@ -41,19 +42,26 @@ parser.add_argument("--alpha", type=float, default=0.25, help="CVaR risk value")
 parser.add_argument("--action_delay", type=int, default=0, help="maximum number of steps to delay the action")
 parser.add_argument("--e_greedy", type=bool, default=False, help="if e-greedy")
 parser.add_argument("--opt", type=float, default=1.0, help="optimism")
+parser.add_argument("--pg_constant", type=float, default=1e-4, help="decaying optimism value")
+parser.add_argument("--patient", type=int, default=1, help="which patient to use")
+
+PATIENTS = {1: "adult#003", 2: "adult#002", 3: "adult#007",\
+                         4: "adolescent#001", 5:"adolescent#002", 6:"adolescent#007",\
+                         7: "child#001", 8: "child#002", 9: "child#007"}
+
 
 def make_env(args):
     register(
-    id='simglucose-adult3-v0',
+    id='simglucose-custom-v0',
     entry_point='utils.gymenv:T1DSimEnv',
-    kwargs={'patient_name': 'adult#003',
+    kwargs={'patient_name': PATIENTS[args.patient],
             'reward_fun': reward_fun,
             'done_fun': done_fun,
             'scenario': scenario_fun(),
             'seed':args.seed} # Returning a custom scenario
     )
     # Check if delay make sense:
-    env = gym.make('simglucose-adult3-v0')
+    env = gym.make('simglucose-custom-v0')
     if minDiff(env.env.sensor.sample_time) <= args.action_delay:
         raise Exception("Too much delay in action, forget a whole meal!")
     return env
@@ -66,6 +74,7 @@ def run_egreedy(args):
     with tf.Session() as sess:
         env = make_env(args)
         Config = config.config(env, args)
+        Config.max_step = int(args.hour*60/(env.env.sensor.sample_time))
 
         if args.load_name is not None:
             load_file = pickle.load(open(args.load_name + '.p', 'rb'))
@@ -78,6 +87,9 @@ def run_egreedy(args):
             print("[*] TF model restored")
         else:
             returns = np.zeros((Config.args.num_episode, 2))
+            BGs = np.zeros((Config.args.num_episode, 2*Config.max_step))
+            Risks = np.zeros((Config.args.num_episode, 2*Config.max_step))
+
             replay_buffer = replay.Replay(Config, load=False)
             C51 = drl.C51(Config, ifCVaR=Config.args.ifCVaR, memory=replay_buffer)
             initial_ep = 0
@@ -94,6 +106,7 @@ def run_egreedy(args):
         for ep in range(initial_ep, Config.args.num_episode+initial_ep):
             terminal = False
             step = 0
+            macro_step = 0
             # TODO: Pass the lr to Adam
             lr = Config.get_lr(ep)
 
@@ -116,20 +129,22 @@ def run_egreedy(args):
                         o = np.expand_dims(observation, axis=0)
                         counts = np.ones((1, Config.nA))
                         distribution = C51.predict(sess, o)
-                        # args.opt = 0
                         values = C51.CVaRopt(distribution, count=counts,\
                                 alpha=Config.args.alpha, N=Config.CVaRSamples, c=args.opt, bonus=0.0)
                     else:
-                        raise Exception("Not Implemented!")
-                        values = C51.Q(observation)
+                        o = np.expand_dims(observation, axis=0)
+                        distribution = C51.predict(sess, o)
+                        values = C51.Q(distribution)
                     action_id = np.random.choice(np.flatnonzero(values == values.max()))
                 action = Config.get_action(action_id) # get action with/ without randomness
                 delay = Config.get_delay()
-                next_observation, reward, terminal, info, num_step = custom_step(env,\
-                        action, step, Config.max_step, delay)
+                next_observation, reward, terminal, info, num_step, BGs, Risks = custom_step(env,\
+                        action, step, Config.max_step, delay, BGs, Risks, ep)
 
                 step += num_step
+                macro_step += 1
                 BG = next_observation.CGM
+
                 next_observation = Config.process(next_observation, meal=info['meal'])
                 no = np.expand_dims(next_observation, axis=0)
                 next_counts = counts # hack to avoind passing counts
@@ -158,7 +173,7 @@ def run_egreedy(args):
                 print("Evaluation Episode ep:%3d, Discounted Return = %g, BG = %g"\
                         %(ep, returns[ep, 0], BG))
             if ep% Config.save_episode == 0:
-                save_file = {'ep': ep, 'returns': returns}
+                save_file = {'ep': ep, 'returns': returns, 'BGs': BGs, 'Risks': Risks}
                 replay_buffer.save(args.save_name)
                 pickle_in = open(args.save_name + '.p', 'wb')
                 pickle.dump(save_file, pickle_in)
@@ -170,6 +185,7 @@ def run(args):
     with tf.Session() as sess:
         env = make_env(args)
         Config = config.config(env, args)
+        Config.max_step = int(args.hour*60/(env.env.sensor.sample_time))
 
         if args.load_name is not None:
             load_file = pickle.load(open(args.load_name + '.p', 'rb'))
@@ -183,6 +199,8 @@ def run(args):
             print("[*] TF model restored")
         else:
             returns = np.zeros((Config.args.num_episode, 2))
+            BGs = np.zeros((Config.args.num_episode, 2*Config.max_step))
+            Risks = np.zeros((Config.args.num_episode, 2*Config.max_step))
             replay_buffer = replay.Replay(Config, load=False)
             C51 = drl.C51(Config, ifCVaR=Config.args.ifCVaR, memory=replay_buffer)
             Counts = prob.LogProb(Config)
@@ -217,13 +235,17 @@ def run(args):
                     values = C51.CVaRopt(distribution, count=c,\
                                 alpha=Config.args.alpha, N=Config.CVaRSamples, c=args.opt, bonus=0.0)
                 else:
-                    raise Exception("Not Implemented!")
-                    values = C51.Q(observation)
+                    raise Exception("Not implementated!")
+                    counts = np.ones((1, Config.nA))
+                    o = np.expand_dims(observation, axis=0)
+                    distribution = C51.predict(sess, o)
+                    values = C51.Q(distribution)
+
                 action_id = np.random.choice(np.flatnonzero(values == values.max()))
                 action = Config.get_action(action_id) # get action with/ without randomness
                 delay = Config.get_delay()
-                next_observation, reward, terminal, info, num_step = custom_step(env,\
-                        action, step, Config.max_step, delay)
+                next_observation, reward, terminal, info, num_step, BGs, Risks = custom_step(env,\
+                        action, step, Config.max_step, delay, BGs, Risks, ep)
 
                 step += num_step
                 BG = next_observation.CGM
@@ -257,7 +279,7 @@ def run(args):
                 print("Training.  Episode ep:%3d, Discounted Return = %g, BG=%g, C51 average loss=%g"\
                         %(ep, returns[ep, 0], BG, np.mean(C51_loss)))
             if ep% Config.save_episode == 0:
-                save_file = {'ep': ep, 'returns': returns}
+                save_file = {'ep': ep, 'returns': returns, 'BGs': BGs, 'Risk': Risks}
                 replay_buffer.save(args.save_name)
                 pickle_in = open(args.save_name + '.p', 'wb')
                 pickle.dump(save_file, pickle_in)

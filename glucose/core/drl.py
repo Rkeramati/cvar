@@ -228,3 +228,7 @@ class C51():
         # Train
         _, loss, summary = sess.run([self.train_op, self.loss, self.C51summary], feed_dict=dic)
         return loss, summary
+
+    def Q(self, distribution):
+        Q = [np.sum(distribution[a] * self.z, axis=-1) for a in range(self.config.nA)]
+        return np.array(Q)

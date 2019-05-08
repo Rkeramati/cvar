@@ -10,7 +10,8 @@ class config():
         self.logprob_layers = [64, 64, 64] # RealNVP hidden layers
         self.state_size = 2
         self.action_size = 2
-
+        # Log prob hyper:
+        self.pg_epsilon = 0.000000001
         # Action space configuration
         self.max_basal = env.action_space.high[1] # max of basal
         self.min_basal = env.action_space.low[1] # min of basal

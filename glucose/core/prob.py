@@ -82,7 +82,8 @@ class LogProb():
             pg = self.lr * norms ## Pissbly a ^2 missing here
             self.PG.append(pg)
             tf.summary.scalar("PG_A%d"%(i), pg)
-            p_count = 1/(tf.math.exp(0.0001*pg/tf.math.sqrt(self.episode)) - 1 + 0.00000001)
+            p_count = 1/(tf.math.exp(self.config.args.pg_constant*pg\
+                    /tf.math.sqrt(self.episode)) - 1 + self.config.pg_epsilon)
             self.p_count.append(p_count)
             tf.summary.scalar("P_Count_A%d"%(i), p_count)
 
