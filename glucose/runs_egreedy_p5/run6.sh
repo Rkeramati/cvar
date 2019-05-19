@@ -11,7 +11,7 @@ echo "SLURM_NNODES"=$SLURM_NNODES
 echo "SLURMTMPDIR="$SLURMTMPDIR
 echo "working directory = "$SLURM_SUBMIT_DIR
 # sample job
-sh glucose6.sh
+sh p5glucose6.sh
 echo NPROCS=$NPROCS
 echo "Done"
 
