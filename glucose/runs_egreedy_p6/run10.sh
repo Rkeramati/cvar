@@ -2,7 +2,7 @@
 #SBATCH --partition=next
 #SBATCH --time=200:00:00
 #SBATCH --mem=1G
-#SBATCH --job-name="GLUP2E10"
+#SBATCH --job-name="GLUP6E10"
 #SBATCH --cpus-per-task=1
 # list out some useful information
 echo "SLURM_JOBID="$SLURM_JOBID
