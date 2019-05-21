@@ -39,7 +39,7 @@ def main(args, version):
         raise Exception("Egreedy eval not implemeted")
         c51_eval = drl.C51(config, init='random', ifCVaR=True, p=None)
     # init counts
-    num_evaluations = int(config.args.num_episode/ (config.eval_episode * 1.0))
+    num_evaluations = int(config.args.num_episode/ (config.eval_episode * 1.0)) + 1
     returns_online = np.zeros((num_evaluations, config.eval_trial))
     returns_eval = np.zeros((num_evaluations, config.eval_trial))
 
@@ -78,7 +78,7 @@ def main(args, version):
             returns_online[eval_num, :] = utils.eval(world, c51,\
                     config.eval_trial, config, epsilon=epsilon)
             returns_eval[eval_num, :] = utils.eval(world, c51,\
-                        config.eval_trial, config, epsilon=epsilon)
+                        config.eval_trial, config, epsilon=0)
 
         # Save:
         if ep%config.save_episode == 0:
