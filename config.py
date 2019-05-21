@@ -19,9 +19,9 @@ class Config():
 
         self.CVaRSamples = 30 # Number of samples to compute CVaR
         self.eval = False # If train a eval network as well
-        self.eval_trial = 20 # number of trial for evaluation/ either online or eval
-        self.eval_episode = 50 # Evaluation episodes
-        self.save_episode = 200 # Save episode
+        self.eval_trial = 50 # number of trial for evaluation/ either online or eval
+        self.eval_episode = 5 # Evaluation episodes
+        self.save_episode = 5000 # Save episode
         self.e_greedy_eval = False # not-implemented # Evaluation for e-greedy
 
         self.schedule = {1: [0.9, 0.1, 4], 2: [0.9, 0.05, 5], 3: [0.9, 0.3, 4],\
