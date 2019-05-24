@@ -58,7 +58,7 @@ def main(args, version):
     else:
         counts = np.zeros((world.nS, world.nA)) + 1 # 1 for all state-action pair
 
-    num_evaluations = int(config.args.num_episode/ (config.eval_episode * 1.0))
+    num_evaluations = int(config.args.num_episode/ (config.eval_episode * 1.0)) + 1
     returns_online = np.zeros((num_evaluations, config.eval_trial))
     if config.eval:
         returns_eval = np.zeros((num_evaluations, config.eval_trial))
@@ -72,16 +72,17 @@ def main(args, version):
 
         # simulate
         start = time.time()
-        #if  o == 194:
+        #if  o == 0:
         #    plt.clf()
-        #    plt.bar(c51.z, c51.p[o, 0, :])
-        #    plt.bar(c51.z, c51.p[o, 1, :])
+        #    plt.bar(c51.z, c51.p[14, 0, :])
+        #    plt.bar(c51.z, c51.p[14, 1, :])
         #    plt.pause(0.01)
         while not terminal:
+            #print(counts[o, :])
             values = c51.CVaRopt(np.expand_dims(o, axis=-1), counts, c=args.opt,\
                     alpha=args.alpha, N=config.CVaRSamples)[0]
-
             a = np.random.choice(np.flatnonzero(values == values.max()))
+            #print(ep, o, values, counts[o, :])
             no, r, terminal = world.step(a)
             counts[o, a] += 1
 
@@ -96,8 +97,8 @@ def main(args, version):
 
             # Go to next observation! I always forget this!
             o = no
-            if r >= 0:
-                print("Goal Reached! In episode %d"%(ep))
+            #if r >= 0:
+                #print("Goal Reached! In episode %d"%(ep))
         episode_time.append(time.time()-start)
 
         # Evaluate online
