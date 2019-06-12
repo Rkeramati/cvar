@@ -1,5 +1,4 @@
 README.md
-setup.py
 simglucose/__init__.py
 simglucose.egg-info/PKG-INFO
 simglucose.egg-info/SOURCES.txt
