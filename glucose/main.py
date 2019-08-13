@@ -89,6 +89,10 @@ def run_egreedy(args):
             returns = np.zeros((Config.args.num_episode, 2))
             BGs = np.zeros((Config.args.num_episode, 2*Config.max_step))
             Risks = np.zeros((Config.args.num_episode, 2*Config.max_step))
+            
+            returns_eval = np.zeros((Config.args.num_episode, 2))
+            BGs_eval = np.zeros((Config.args.num_episode, 2*Config.max_step))
+            Risks_eval = np.zeros((Config.args.num_episode, 2*Config.max_step))
 
             replay_buffer = replay.Replay(Config, load=False)
             C51 = drl.C51(Config, ifCVaR=Config.args.ifCVaR, memory=replay_buffer)
@@ -151,12 +155,13 @@ def run_egreedy(args):
                 episode_return.append(reward)
                 if step >= Config.max_step:
                     terminal = True
-                # TODO: egreedy eval ep should not be trained on
+                
+		# egreedy eval ep should not be trained on
                 replay_buffer.add(observation, action_id, reward, terminal,\
-                        counts, next_counts)
+                        	counts, next_counts)
                 # Training:
                 l, summary = C51.train(sess=sess, size=Config.train_size, opt=args.opt)
-
+			
                 if ep%Config.summary_write_episode == 0 and summary is not None:
                     summary_writer.add_summary(summary, train_step)
                 train_step += 1
@@ -166,6 +171,41 @@ def run_egreedy(args):
                 observation = next_observation
 
             returns[ep, 0] = discounted_return(episode_return, Config.args.gamma)
+            
+            if ep%Config.eval_episode == 0:
+               episode_return_eval = []
+               meal = 0
+               step = 0
+               observation = Config.process(env.reset(), meal=meal) # Process will add stochasticity
+                                                                 # to the observed state
+               while step <= Config.max_step and not terminal:
+                  if Config.args.ifCVaR:
+                     o = np.expand_dims(observation, axis=0)
+                     counts = np.ones((1, Config.nA))
+                     distribution = C51.predict(sess, o)
+                     values = C51.CVaRopt(distribution, count=counts,\
+                                alpha=Config.args.alpha, N=Config.CVaRSamples, c=args.opt, bonus=0.0)
+                  else:
+                     o = np.expand_dims(observation, axis=0)
+                     distribution = C51.predict(sess, o)
+                     values = C51.Q(distribution)
+                  action_id = np.random.choice(np.flatnonzero(values == values.max()))
+                  action = Config.get_action(action_id) # get action with/ without randomness
+                  delay = Config.get_delay()
+                  next_observation, reward, terminal, info, num_step, BGs_eval, Risks_eval = custom_step(env,\
+                        action, step, Config.max_step, delay, BGs_eval, Risks_eval, ep)
+
+                  step += num_step
+
+                  next_observation = Config.process(next_observation, meal=info['meal'])
+                  no = np.expand_dims(next_observation, axis=0)
+                  next_counts = counts # hack to avoind passing counts
+                  episode_return_eval.append(reward)
+                  if step >= Config.max_step:
+                     terminal = True
+             
+               returns_eval[ep, 0] = discounted_return(episode_return_eval, Config.args.gamma)
+
             if ep%Config.print_episode == 0 and not ep%Config.eval_episode==0:
                 print("Training.  Episode ep:%3d, Discounted Return = %g, Epsilon = %g, BG=%g, C51 average loss=%g"\
                         %(ep, returns[ep, 0], epsilon, BG, np.mean(C51_loss)))
@@ -173,7 +213,9 @@ def run_egreedy(args):
                 print("Evaluation Episode ep:%3d, Discounted Return = %g, BG = %g"\
                         %(ep, returns[ep, 0], BG))
             if ep% Config.save_episode == 0:
-                save_file = {'ep': ep, 'returns': returns, 'BGs': BGs, 'Risks': Risks}
+                save_file = {'ep': ep, 'returns': returns, 'BGs': BGs, 'Risks': Risks,\
+                             'returns_eval': returns_eval,\
+                             'BGs_eval': BGs_eval, 'Risks_eval': Risks_eval}
                 replay_buffer.save(args.save_name)
                 pickle_in = open(args.save_name + '.p', 'wb')
                 pickle.dump(save_file, pickle_in)
@@ -288,6 +330,7 @@ def run(args):
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    args.save_name = '/next/u/keramati/' + args.save_name
     if not os.path.exists(args.save_name + '/summary'):
             os.makedirs(args.save_name + '/summary')
     if args.e_greedy:

@@ -40,10 +40,10 @@ class config():
 
         # Exploration
         self.max_e = 0.9 # Exploration max epsilon
-        self.min_e = 0.1
+        self.min_e = 0.05
         self.max_lr = 0.9 # Maximum learnig rate
         self.min_lr = 0.5
-        self.episode_ratio = 2 # When to reach the minimum in episode for alpha and ep schedule
+        self.episode_ratio = 4 # When to reach the minimum in episode for alpha and ep schedule
 
         #self.schedule = [0.9, 0.1, 2] # Epsilon greedy exploration scheduelce
 
