@@ -49,13 +49,13 @@ class C51():
             out = tf.layers.dense(out, units=self.config.layer_size[layer],\
                     activation=tf.nn.relu, kernel_initializer=tf.initializers.glorot_uniform(),\
                     name="dense_%d"%(layer))
-            tf.summary.histogram(out.op.name, out)
+            #tf.summary.histogram(out.op.name, out)
         self.distribution = []
         for i in range(self.config.nA):
             layer = tf.layers.dense(out, units=self.config.nAtoms,\
                     activation=tf.nn.softmax, kernel_initializer=tf.initializers.glorot_uniform(),\
                     name = "output_%d"%(i))
-            tf.summary.histogram(layer.op.name, layer)
+            #tf.summary.histogram(layer.op.name, layer)
             self.distribution.append(layer)
 
     def add_optimizer(self):

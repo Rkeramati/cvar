@@ -33,14 +33,16 @@ class config():
         self.Vmax = 15
 
         # Summary
-        self.eval_episode = 5
-        self.save_episode = 10
-        self.print_episode = 1
-        self.summary_write_episode = 1
+        self.eval_episode = 10
+        self.save_episode = 1000
+        self.print_episode = 10
+        self.summary_write_episode = 100
 
         # Exploration
         self.max_e = 0.9 # Exploration max epsilon
         self.min_e = 0.05
+
+        # Lr is still fixed here
         self.max_lr = 0.9 # Maximum learnig rate
         self.min_lr = 0.5
         self.episode_ratio = 4 # When to reach the minimum in episode for alpha and ep schedule
