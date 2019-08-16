@@ -20,7 +20,7 @@ class config():
 
         self.nAtoms = 51
         self.Vmin = -1
-        self.Vmax = 10
+        self.Vmax = 50
 
         # Summary
         self.eval_episode = 100
