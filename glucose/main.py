@@ -90,6 +90,8 @@ def run_egreedy(args):
             BGs = np.zeros((Config.args.num_episode, 2*Config.max_step))
             Risks = np.zeros((Config.args.num_episode, 2*Config.max_step))
 
+
+            counts = np.ones((1, Config.nA))
             returns_eval = np.zeros((Config.args.num_episode, 2))
             BGs_eval = np.zeros((Config.args.num_episode, 2*Config.max_step))
             Risks_eval = np.zeros((Config.args.num_episode, 2*Config.max_step))
@@ -115,10 +117,10 @@ def run_egreedy(args):
             lr = Config.get_lr(ep)
 
             # Epsilon for e-greedy:
-            if ep%Config.eval_episode == 0:
-                epsilon=0 # Evaluation Episode, no epsilon
-            else:
-                epsilon = Config.get_epsilon(ep)
+            #if ep%Config.eval_episode == 0:
+            #    epsilon=0 # Evaluation Episode, no epsilon
+            #else:
+            epsilon = Config.get_epsilon(ep)
 
             episode_return = []
             Config.max_step = args.hour*60/(env.env.sensor.sample_time) # Compute the max step
@@ -176,6 +178,7 @@ def run_egreedy(args):
                episode_return_eval = []
                meal = 0
                step = 0
+               terminal = False
                observation = Config.process(env.reset(), meal=meal) # Process will add stochasticity
                                                                  # to the observed state
                while step <= Config.max_step and not terminal:
@@ -209,17 +212,20 @@ def run_egreedy(args):
             if ep%Config.print_episode == 0 and not ep%Config.eval_episode==0:
                 print("Training.  Episode ep:%3d, Discounted Return = %g, Epsilon = %g, BG=%g, C51 average loss=%g"\
                         %(ep, returns[ep, 0], epsilon, BG, np.mean(C51_loss)))
-            if ep % Config.eval_episode == 0:
-                print("Evaluation Episode ep:%3d, Discounted Return = %g, BG = %g"\
-                        %(ep, returns[ep, 0], BG))
             if ep% Config.save_episode == 0:
-                save_file = {'ep': ep, 'returns': returns, 'BGs': BGs, 'Risks': Risks,\
-                             'returns_eval': returns_eval,\
-                             'BGs_eval': BGs_eval, 'Risks_eval': Risks_eval}
+                save_file = {'ep': ep, 'returns': returns, 'BGs': BGs, 'Risks': Risks}
+                save_file_eval = {'ep':ep, 'returns': returns_eval,\
+                                  'BGs': BGs_eval, 'Risks_eval': Risks_eval}
                 replay_buffer.save(args.save_name)
-                pickle_in = open(args.save_name + '.p', 'wb')
+
+                pickle_in = open(args.save_name + '_%d.p'%(ep), 'wb')
                 pickle.dump(save_file, pickle_in)
                 pickle_in.close()
+
+                pickle_in = open(args.save_name + '_%d_eval.p'%(ep), 'wb')
+                pickle.dump(save_file_eval, pickle_in)
+                pickle_in.close()
+
                 saver.save(sess, args.save_name + '.ckpt')
 
 
@@ -323,7 +329,7 @@ def run(args):
             if ep% Config.save_episode == 0:
                 save_file = {'ep': ep, 'returns': returns, 'BGs': BGs, 'Risk': Risks}
                 replay_buffer.save(args.save_name)
-                pickle_in = open(args.save_name + '.p', 'wb')
+                pickle_in = open(args.save_name + '_%d.p'%(ep), 'wb')
                 pickle.dump(save_file, pickle_in)
                 pickle_in.close()
                 saver.save(sess, args.save_name + '.ckpt')
