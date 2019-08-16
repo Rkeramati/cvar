@@ -4,8 +4,11 @@ class config():
     # Config file for C51 algorithm
     def __init__(self, env, args):
         # TF config
-        self.num_layers = 3 # Number of hidden layer
-        self.layer_size = [128, 128, 128] # Hidden Layer size
+        architectures = {1: {1: 3, 2: [128, 128, 128]}, 2: {1: 4, 2:[128, 128, 128, 128]},\
+                3: {1: 2, 2: [128, 128]}, 4: {1: 3, 2: [64, 64, 64]}}
+
+        self.num_layers = architectures[args.arch][1] # Number of hidden layer
+        self.layer_size = architectures[args.arch][2] # Hidden Layer size
 
         self.logprob_layers = [64, 64, 64] # RealNVP hidden layers
 
@@ -17,13 +20,13 @@ class config():
 
         self.nAtoms = 51
         self.Vmin = -1
-        self.Vmax = 5
+        self.Vmax = 10
 
         # Summary
-        self.eval_episode = 5
-        self.save_episode = 5000
-        self.print_episode = 100
-        self.summary_write_episode = 1
+        self.eval_episode = 100
+        self.save_episode = 100
+        self.print_episode = 1
+        self.summary_write_episode = 1e7
 
         # Exploration
         self.max_e = 0.9 # Exploration max epsilon

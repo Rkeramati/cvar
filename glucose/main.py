@@ -89,7 +89,7 @@ def run_egreedy(args):
             returns = np.zeros((Config.args.num_episode, 2))
             BGs = np.zeros((Config.args.num_episode, 2*Config.max_step))
             Risks = np.zeros((Config.args.num_episode, 2*Config.max_step))
-            
+
             returns_eval = np.zeros((Config.args.num_episode, 2))
             BGs_eval = np.zeros((Config.args.num_episode, 2*Config.max_step))
             Risks_eval = np.zeros((Config.args.num_episode, 2*Config.max_step))
@@ -155,13 +155,13 @@ def run_egreedy(args):
                 episode_return.append(reward)
                 if step >= Config.max_step:
                     terminal = True
-                
+
 		# egreedy eval ep should not be trained on
                 replay_buffer.add(observation, action_id, reward, terminal,\
                         	counts, next_counts)
                 # Training:
                 l, summary = C51.train(sess=sess, size=Config.train_size, opt=args.opt)
-			
+
                 if ep%Config.summary_write_episode == 0 and summary is not None:
                     summary_writer.add_summary(summary, train_step)
                 train_step += 1
@@ -171,7 +171,7 @@ def run_egreedy(args):
                 observation = next_observation
 
             returns[ep, 0] = discounted_return(episode_return, Config.args.gamma)
-            
+
             if ep%Config.eval_episode == 0:
                episode_return_eval = []
                meal = 0
@@ -203,7 +203,7 @@ def run_egreedy(args):
                   episode_return_eval.append(reward)
                   if step >= Config.max_step:
                      terminal = True
-             
+
                returns_eval[ep, 0] = discounted_return(episode_return_eval, Config.args.gamma)
 
             if ep%Config.print_episode == 0 and not ep%Config.eval_episode==0:
