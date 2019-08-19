@@ -59,7 +59,6 @@ def egreedy(args):
             print("[*] TF model initialized")
 
         C51_loss = []
-        train_step = 0
         number_of_evaluations = 0
         for ep in range(Config.args.num_episode):
             terminal = False
@@ -93,12 +92,17 @@ def egreedy(args):
                     evaluation_returns[number_of_evaluations, eval_episode] =\
                             discounted_return(episode_return, Config.args.gamma)
                 number_of_evaluations += 1
+            #print('Start')
+            terminal = False
             episode_return = []
             observation = env.reset()
+            #print('Observation by env.reset():', observation)
 
             while not terminal:
+                #print('This step observation', observation)
                 if np.random.rand() <= epsilon:
                     action_id = np.random.randint(Config.nA)
+                    #print('Random action, action id:', action_id)
                 else:
                     if Config.args.ifCVaR:
                         o = np.expand_dims(observation, axis=0)
@@ -110,8 +114,11 @@ def egreedy(args):
                         o = np.expand_dims(observation, axis=0)
                         distribution = C51.predict(sess, o)
                         values = C51.Q(distribution)
-                action_id = np.random.choice(np.flatnonzero(values == values.max()))
+                        #print('Not CVaR, values', values)
+                    action_id = np.random.choice(np.flatnonzero(values == values.max()))
+                    #print('Not random action', action_id)
                 next_observation, reward, terminal, info = env.step(action_id)
+                #print('Taken action:', action_id, "return:", next_observation, reward, terminal, info)
                 no = np.expand_dims(next_observation, axis=0)
                 next_counts = counts # hack to avoind passing counts
                 episode_return.append(reward)
@@ -123,6 +130,7 @@ def egreedy(args):
                     C51_loss.append(l)
                     returns[ep, 1] = l
                 observation = next_observation
+
             returns[ep, 0] = discounted_return(episode_return, Config.args.gamma)
             if ep%Config.eval_episode == 0:
                 print("Evaluation. Episode ep:%4d, Discounted Return = %g, Epsilon = %g"\

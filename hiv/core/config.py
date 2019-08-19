@@ -19,8 +19,8 @@ class config():
         # Action space configuration
 
         self.nAtoms = 51
-        self.Vmin = -1
-        self.Vmax = 50
+        self.Vmin = -10
+        self.Vmax = 100
 
         # Summary
         self.eval_episode = 100
@@ -57,3 +57,8 @@ class config():
         slope = (-self.max_e + self.min_e)/(self.args.num_episode/self.episode_ratio)
         e = max(self.min_e, self.max_e + ep *slope)
         return e
+
+    def action_process(self, a):
+        action = np.zeros((a.shape[0], self.action_size))
+        action[:, a[:]] = 1
+        return action
