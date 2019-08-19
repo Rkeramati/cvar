@@ -126,7 +126,7 @@ class C51():
             # Compute CVaR
             tau = np.expand_dims(np.random.uniform(0, alpha, N).reshape(N, 1), axis = 0)
             cdf = np.expand_dims(cdf, axis = 1)
-            idx = np.argmax((cdf > tau) * 1.0, axis=-1) # argmax returns the last max
+            idx = np.argmax((cdf >= tau) * 1.0, axis=-1) # argmax returns the last max
             # Average
             values = self.z[idx]
             Q[:, a] = np.mean(values, axis=-1)

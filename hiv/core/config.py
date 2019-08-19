@@ -18,9 +18,9 @@ class config():
         self.pg_epsilon = 0.000000001
         # Action space configuration
 
-        self.nAtoms = 51
+        self.nAtoms = 151
         self.Vmin = -10
-        self.Vmax = 100
+        self.Vmax = 40
 
         # Summary
         self.eval_episode = 100
@@ -41,7 +41,7 @@ class config():
 
         self.nA = 4
 
-        self.CVaRSamples = 20 # number of samples for CVaR
+        self.CVaRSamples = 50 # number of samples for CVaR
 
         self.train_size=32
         self.memory_size = 10000 # Size of the replay memory
