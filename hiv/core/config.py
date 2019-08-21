@@ -20,17 +20,17 @@ class config():
 
         self.nAtoms = 151
         self.Vmin = -10
-        self.Vmax = 40
+        self.Vmax = 20
 
         # Summary
         self.eval_episode = 100
         self.save_episode = 100
         self.print_episode = 1
-        self.summary_write_episode = 1e7
+        self.summary_write_episode = 100
 
         # Exploration
-        self.max_e = 0.9 # Exploration max epsilon
-        self.min_e = 0.05
+        sch = {1: (0.9, 0.05, 10), 2: (0.9, 0.05, 8), 3: (0.9, 0.05, 5), 4:(0.9, 0.05, 4), 5: (0.9, 0.05, 2)}
+        self.max_e, self.min_e, self.episode_ratio_e = sch[args.tune]
         self.max_lr = 0.001 # Maximum learnig rate
         self.min_lr = 0.0001
         self.episode_ratio = 2 # When to reach the minimum in episode for alpha and ep schedule
@@ -47,6 +47,7 @@ class config():
         self.memory_size = 10000 # Size of the replay memory
 
         self.args = args
+        self.action_map = np.array([0, 1, 2, 3])
 
     def get_lr(self, ep):
         slope = (-self.max_lr + self.min_lr)/(self.args.num_episode/self.episode_ratio)
@@ -54,11 +55,11 @@ class config():
         return alpha
 
     def get_epsilon(self, ep):
-        slope = (-self.max_e + self.min_e)/(self.args.num_episode/self.episode_ratio)
+        slope = (-self.max_e + self.min_e)/(self.args.num_episode/self.episode_ratio_e)
         e = max(self.min_e, self.max_e + ep *slope)
         return e
 
     def action_process(self, a):
         action = np.zeros((a.shape[0], self.action_size))
-        action[:, a[:]] = 1
+        action[np.arange(a.shape[0]), a] = 1
         return action

@@ -60,6 +60,8 @@ def run(args):
             sess.run(tf.initializers.global_variables())
             print("[*] TF model initialized")
 
+        summary_writer = tf.summary.FileWriter(args.save_name + '/summary', sess.graph)
+
         C51_loss = []
         number_of_evaluations = 0
         train_step= 0
@@ -87,13 +89,19 @@ def run(args):
                 action_id = np.random.choice(np.flatnonzero(values == values.max()))
                 next_observation, reward, terminal, info = env.step(action_id)
                 no = np.expand_dims(next_observation, axis=0)
-                next_counts = counts # hack to avoind passing counts
+                next_counts, counts_summary = Counts.compute_counts(sess, no, train_step)
+                next_counts = np.array(next_counts)
                 episode_return.append(reward)
                 replay_buffer.add(observation, action_id, reward, terminal,\
                                  counts, next_counts)
                 # Training:
-                l, _ = C51.train(sess=sess, size=Config.train_size, opt=args.opt, learning_rate = lr)
+                l, summary = C51.train(sess=sess, size=Config.train_size, opt=args.opt, learning_rate = lr)
                 _ = Counts.train(sess, o, np.expand_dims(action_id, axis=0))
+                if ep%Config.summary_write_episode == 0 and summary is not None and False:
+                    summary_writer.add_summary(summary, train_step)
+                    summary_writer.add_summary(summary_counts, train_step)
+                    summary_writer.add_summary(counts_summary, train_step)
+
                 train_step += 1
                 if l is not None:
                     C51_loss.append(l)

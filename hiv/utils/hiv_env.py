@@ -8,7 +8,7 @@ class HIVTreatment:
         np.random.seed(args.seed)
 
         st_pattern = {1: (0.1, 0.01, 0.5), 2: (0.1, 0.05, 0.1),\
-                3:(0, 0.01, 0.01), 4:(0.05, 0.01, 0.3), 5:(0.05, 0.01, 0.8)}
+                3:(0, 0.01, 0), 4:(0.1, 0.01, 0), 5:(0.05, 0.01, 0.8)}
 
         self.state_names = ("T1", "T1*", "T2", "T2*", "V", "E")
 
@@ -48,8 +48,8 @@ class HIVTreatment:
         eps1, eps2 = self.actions[a]
 
         # Addin the noise to actions:
-        eps1 = max(eps1 + np.random.normal(self.action_noise, self.action_sigma), 0.0)
-        eps2 = max(eps2 + np.random.normal(self.action_noise, self.action_sigma), 0.0)
+        eps1 = eps1 + np.random.normal(self.action_noise, self.action_sigma)
+        eps2 = eps2 + np.random.normal(self.action_noise, self.action_sigma)
 
         #for mini_step in range(5):
         #    # Drop the drug efficacies
@@ -65,7 +65,8 @@ class HIVTreatment:
         # the reward function penalizes treatment because of side-effects
         reward = (- 0.1 * V - 2e4 * eps1 ** 2 - 2e3 * eps2 ** 2 + 1e3 * E)
         if self.normalize_reward:
-            reward /= 1e7
+            reward /= (4 * 1e6)
+            #reward = np.sqrt(reward)
 
         self.state = ns.copy()
         if self.logspace:

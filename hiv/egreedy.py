@@ -24,6 +24,9 @@ parser.add_argument("--arch", type=int, default=1, help="architecture type")
 parser.add_argument("--st", type=int, default=1, help="stochasticity pattern")
 parser.add_argument("--eval", default =20, help="number of runs for each evaluation")
 
+# egreedy
+parser.add_argument("--tune", type=int, help="which egreedy scheduel to use")
+
 from core import config, drl, replay, prob
 from utils.hiv_env import *
 import os
