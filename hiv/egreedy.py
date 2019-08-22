@@ -54,6 +54,8 @@ def egreedy(args):
         else:
             returns = np.zeros((Config.args.num_episode, 2))
             evaluation_returns = np.zeros((int(args.num_episode/Config.eval_episode) + 1, args.eval))
+            all_episode_reward = np.zeros((Config.args.num_episode, env.episodeCap))
+
             replay_buffer = replay.Replay(Config, load=False)
             counts = np.ones((1, Config.nA)) #hack to avoid re-writing code
             C51 = drl.C51(Config, ifCVaR=Config.args.ifCVaR, memory=replay_buffer)
@@ -61,6 +63,8 @@ def egreedy(args):
             sess.run(tf.initializers.global_variables())
             print("[*] TF model initialized")
 
+        summary_writer = tf.summary.FileWriter(args.save_name + '/summary', sess.graph)
+        train_step = 0
         C51_loss = []
         number_of_evaluations = 0
         for ep in range(Config.args.num_episode):
@@ -128,13 +132,20 @@ def egreedy(args):
                 replay_buffer.add(observation, action_id, reward, terminal,\
                                  counts, next_counts)
                 # Training:
-                l, _ = C51.train(sess=sess, size=Config.train_size, opt=args.opt, learning_rate = lr)
+                l, summary = C51.train(sess=sess, size=Config.train_size, opt=args.opt, learning_rate = lr)
+                train_step += 1
+
+                if ep%Config.summary_write_episode == 0 and summary is not None:
+                     summary_writer.add_summary(summary, train_step)
+
                 if l is not None:
                     C51_loss.append(l)
                     returns[ep, 1] = l
                 observation = next_observation
 
             returns[ep, 0] = discounted_return(episode_return, Config.args.gamma)
+            all_episode_reward[ep, :] = np.array(episode_return)
+
             if ep%Config.eval_episode == 0:
                 print("Evaluation. Episode ep:%4d, Discounted Return = %g, Epsilon = %g"\
                         %(ep, returns[ep, 0], epsilon))
@@ -148,6 +159,12 @@ def egreedy(args):
                 pickle_in = open(args.save_name + '_%d.p'%(ep), 'wb')
                 pickle.dump(save_file, pickle_in)
                 pickle_in.close()
+
+                save_file = {'all': all_episode_reward}
+                pickle_in = open(args.save_name+'_all_%d.p'%(ep), 'wb')
+                pickle.dump(save_file, pickle_in)
+                pickle_in.close()
+
                 saver.save(sess, args.save_name + '.ckpt')
 
 def discounted_return(returns, gamma):

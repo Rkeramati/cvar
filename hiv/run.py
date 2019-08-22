@@ -17,7 +17,7 @@ parser.add_argument("--actionable_time_steps", type=int, default=20, help="numbe
 parser.add_argument("--normalize_state", type=bool, default=True, help="If normalize the state space to 0 and 1")
 parser.add_argument("--normalize_reward", type=bool, default=True, help="If normalize the reward")
 # optimism amount, should be zero for egreedy
-parser.add_argument("--opt", type=float, default=0.0, help="opt amount")
+parser.add_argument("--opt", type=float, default=1.0, help="opt amount")
 # Tuning Parameters
 parser.add_argument("--arch", type=int, default=1, help="architecture type")
 # stochasticity pattern
@@ -25,7 +25,7 @@ parser.add_argument("--st", type=int, default=1, help="stochasticity pattern")
 parser.add_argument("--eval", default =20, help="number of runs for each evaluation")
 # Log Prob
 parser.add_argument("--pg_constant", type=float, default=1e-5)
-
+parser.add_argument("--tune", type=int, default=1)
 from core import config, drl, replay, prob
 from utils.hiv_env import *
 import os
@@ -42,17 +42,21 @@ def run(args):
         Config.max_step = env.episodeCap
 
         if args.load_name is not None:
-            load_file = pickle.load(open(args.load_name + '.p', 'rb'))
+            load_file = pickle.load(open(args.load_name + '_1800.p', 'rb'))
             replay_buffer = replay.Replay(Config, load=True, name=args.load_name)
+            replay_buffer = replay.Replay(Config, load=False)
             C51 = drl.C51(Config, ifCVaR=Config.args.ifCVaR, memory=replay_buffer)
             returns = load_file["returns"]
+            Counts = prob.LogProb(Config)
             initial_ep = load_file["ep"]
             saver = tf.train.Saver()
             saver.restore(sess, args.load_name + '.ckpt')
             print("[*] TF model restored")
         else:
             returns = np.zeros((Config.args.num_episode, 2))
-            evaluation_returns = np.zeros((int(args.num_episode/Config.eval_episode) + 1, args.eval))
+            #evaluation_returns = np.zeros((int(args.num_episode/Config.eval_episode) + 1, args.eval))
+            all_episode_reward = np.zeros((Config.args.num_episode, env.episodeCap))
+
             replay_buffer = replay.Replay(Config, load=False)
             Counts = prob.LogProb(Config)
             C51 = drl.C51(Config, ifCVaR=Config.args.ifCVaR, memory=replay_buffer)
@@ -96,8 +100,8 @@ def run(args):
                                  counts, next_counts)
                 # Training:
                 l, summary = C51.train(sess=sess, size=Config.train_size, opt=args.opt, learning_rate = lr)
-                _ = Counts.train(sess, o, np.expand_dims(action_id, axis=0))
-                if ep%Config.summary_write_episode == 0 and summary is not None and False:
+                summary_counts = Counts.train(sess, o, np.expand_dims(action_id, axis=0))
+                if ep%Config.summary_write_episode == 0 and summary is not None:
                     summary_writer.add_summary(summary, train_step)
                     summary_writer.add_summary(summary_counts, train_step)
                     summary_writer.add_summary(counts_summary, train_step)
@@ -109,6 +113,8 @@ def run(args):
                 observation = next_observation
 
             returns[ep, 0] = discounted_return(episode_return, Config.args.gamma)
+            all_episode_reward[ep, :] = np.array(episode_return)
+
             if ep%Config.eval_episode == 0:
                 print("Evaluation. Episode ep:%4d, Discounted Return = %g, Epsilon = %g"\
                         %(ep, returns[ep, 0], epsilon))
@@ -122,6 +128,12 @@ def run(args):
                 pickle_in = open(args.save_name + '_%d.p'%(ep), 'wb')
                 pickle.dump(save_file, pickle_in)
                 pickle_in.close()
+
+                save_file = {'all': all_episode_reward}
+                pickle_in = open(args.save_name + '_all_%d.p'%(ep), 'wb')
+                pickle.dump(save_file, pickle_in)
+                pickle_in.close()
+
                 saver.save(sess, args.save_name + '.ckpt')
 
 def discounted_return(returns, gamma):

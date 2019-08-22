@@ -20,7 +20,7 @@ class config():
 
         self.nAtoms = 151
         self.Vmin = -10
-        self.Vmax = 20
+        self.Vmax = 40
 
         # Summary
         self.eval_episode = 100
@@ -29,8 +29,14 @@ class config():
         self.summary_write_episode = 100
 
         # Exploration
-        sch = {1: (0.9, 0.05, 10), 2: (0.9, 0.05, 8), 3: (0.9, 0.05, 5), 4:(0.9, 0.05, 4), 5: (0.9, 0.05, 2)}
-        self.max_e, self.min_e, self.episode_ratio_e = sch[args.tune]
+        sch = {1: (0.9, 0.05, 10), 2: (0.9, 0.05, 8), 3: (0.9, 0.05, 5), 4:(0.9, 0.05, 4), 5: (0.9, 0.05, 2), 6: (1.0, 0.9, 10), 7:(1.0, 0.9, 100), 8:(1.0, 0.9, 500), 9:(1, 0.99, 10), 10:(1.0, 0.99, 100)}
+        if args.tune <=5:
+            self.max_e, self.min_e, self.episode_ratio_e = sch[args.tune]
+            self.linear = True
+        else:
+            self.linear = False
+            self.max_e, self.decay, self.decay_step = sch[args.tune]
+
         self.max_lr = 0.001 # Maximum learnig rate
         self.min_lr = 0.0001
         self.episode_ratio = 2 # When to reach the minimum in episode for alpha and ep schedule
@@ -55,8 +61,11 @@ class config():
         return alpha
 
     def get_epsilon(self, ep):
-        slope = (-self.max_e + self.min_e)/(self.args.num_episode/self.episode_ratio_e)
-        e = max(self.min_e, self.max_e + ep *slope)
+        if self.linear:
+            slope = (-self.max_e + self.min_e)/(self.args.num_episode/self.episode_ratio_e)
+            e = max(self.min_e, self.max_e + ep *slope)
+        else:
+            e = self.max_e * self.decay**(ep/self.decay_step)
         return e
 
     def action_process(self, a):

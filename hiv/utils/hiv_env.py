@@ -65,7 +65,7 @@ class HIVTreatment:
         # the reward function penalizes treatment because of side-effects
         reward = (- 0.1 * V - 2e4 * eps1 ** 2 - 2e3 * eps2 ** 2 + 1e3 * E)
         if self.normalize_reward:
-            reward /= (4 * 1e6)
+            reward /= 1e6
             #reward = np.sqrt(reward)
 
         self.state = ns.copy()
