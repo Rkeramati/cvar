@@ -55,7 +55,7 @@ class config():
         self.action_map = np.transpose([np.tile(self.bolus_map, len(self.basal_map)), np.repeat(self.basal_map, len(self.bolus_map))])
         self.nA = self.action_map.shape[0]
 
-        self.CVaRSamples = 20 # number of samples for CVaR
+        self.CVaRSamples = 50 # number of samples for CVaR
 
         self.train_size=32
         self.memory_size = 10000 # Size of the replay memory
