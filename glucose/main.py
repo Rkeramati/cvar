@@ -43,8 +43,8 @@ parser.add_argument("--patient", type=int, default=1, help="which patient")
 parser.add_argument("--e_greedy_option", type=int, default=1, help="Which schedule to use for e-greedy")
 parser.add_argument("--decay", type=bool, default=False, help="If use exponential decay")
 
-PATIENTS = {1: "adult#003", 2: "adult#002", 3: "adult#007",\
-            4: "adolescent#001", 5:"adolescent#002", 6:"adolescent#007",\
+PATIENTS = {1: "adult#003", 2: "adult#002", 3: "adult#003", 4: "adult#007"\
+            5:"adolescent#002", 6:"adolescent#007",\
             7: "child#001", 8: "child#002", 9: "child#007"}
 
 def make_env(args):
