@@ -11,7 +11,7 @@ random.seed(seed)
 
 class IQNAgent:
     def __init__(self, sess, config, 
-                 view_dist=True
+                 view_dist=False
                  ):
         self.memory = [] # an instance of replay buffer
         self.buffer_size = config.memory_size
@@ -29,6 +29,7 @@ class IQNAgent:
         self.gradient_norm = config.gradient_norm
         self.view_dist = view_dist
         self.eta = config.eta
+        self.embedding_size = 32
 
         self.nA, self.nS, = config.nA, config.nS
 
@@ -37,14 +38,10 @@ class IQNAgent:
         self.A = tf.placeholder(tf.float32, [None, 1], 'a')
         self.A_ = tf.placeholder(tf.float32, [None, 1], 'a')
         self.T = tf.placeholder(tf.float32, [None, None], 'theta_t')
-        self.tau = tf.placeholder(tf.float32, [None, None], 'tau')
-        self.tau_ = tf.placeholder(tf.float32, [None, None], 'tau_')
-        self.learning_rate = 1e-4 # TODO: Add Lr decay
-
-        self.eps_max = config.max_e
-        self.eps_min = config.min_e
-        self.eps = 0.0 if not self.e_greedy else self.eps_max
-        self.e_step = 1000
+        self.tau = tf.placeholder(tf.float32, [None, self.num_tau], 'tau')
+        self.tau_ = tf.placeholder(tf.float32, [None, self.num_tau_prime], 'tau_')
+        self.learning_rate = tf.placeholder(tf.float32, None, 'learning_rate')
+        
 
         self.q_theta_eval_train, self.q_mean_eval_train, self.q_theta_eval_test,\
          self.q_mean_eval_test = self._build_net(
@@ -82,47 +79,38 @@ class IQNAgent:
 
         self.saver = tf.train.Saver()
 
-        #self.sess.run(tf.global_variables_initializer())
-
     def _build_net(self, s, tau, scope, trainable):
 
-        s_tiled = tf.tile(s, [1, tf.shape(tau)[1]])
+        s_tiled = tf.tile(s, [1, tf.shape(tau)[1]]) # number of tau/ tau prime
         s_reshaped = tf.reshape(s_tiled, [-1, self.nS])
         tau_reshaped = tf.reshape(tau, [-1, 1])
 
         with tf.variable_scope(scope):
-            init_w = tf.contrib.layers.xavier_initializer()
-            init_b = tf.constant_initializer(0.001)
             pi_mtx = tf.constant(np.expand_dims(np.pi * np.arange(0, 64), axis=0), dtype=tf.float32)
-            d = 16
-            net_psi = tf.layers.dense(s_reshaped, d, activation=tf.nn.relu,
-                                     kernel_initializer=init_w, bias_initializer=init_b, name='psi',
+
+            net_psi = tf.layers.dense(s_reshaped, self.embedding_size, activation=tf.nn.relu,
+                                     kernel_initializer=tf.contrib.layers.xavier_initializer(), name='psilayer1',
                                      trainable=trainable)
+
             cos_tau = tf.cos(tf.matmul(tau_reshaped, pi_mtx))
-            net_phi = tf.layers.dense(cos_tau, d, activation=tf.nn.relu,
-                                      kernel_initializer=init_w, bias_initializer=init_b, name='phi',
+            net_phi = tf.layers.dense(cos_tau, self.embedding_size, activation=tf.nn.relu,
+                                      kernel_initializer=tf.contrib.layers.xavier_initializer(), name='phi',
                                       trainable=trainable)
 
-            joint_term = net_psi+tf.multiply(net_psi, net_phi)
+            joint_term = tf.multiply(net_psi, net_phi)
 
-            q_net = tf.layers.dense(joint_term, 32, activation=tf.nn.relu,
-                                    kernel_initializer=init_w, bias_initializer=init_b, name="layer1",
-                                    trainable=trainable)
-
-            q_net = tf.layers.dense(q_net, 32, activation=tf.nn.relu,
-                                    kernel_initializer=init_w, bias_initializer=init_b, name="layer2",
+            q_net = tf.layers.dense(joint_term, 64, activation=tf.nn.relu,
+                                    kernel_initializer=tf.contrib.layers.xavier_initializer(), name="layer1",
                                     trainable=trainable)
 
             q_flat = tf.layers.dense(q_net, self.nA, activation=None,
-                                     kernel_initializer=init_w, bias_initializer=init_b, name="theta",
+                                     kernel_initializer=tf.contrib.layers.xavier_initializer(), name="theta",
                                      trainable=trainable)
 
             q_re_train = tf.transpose(tf.split(q_flat, self.batch_size, axis=0), perm=[0, 2, 1])
-
             q_re_test = tf.transpose(tf.split(q_flat, 1, axis=0), perm=[0, 2, 1])
 
             q_mean_train = tf.reduce_mean(q_re_train, axis=2)
-
             q_mean_test = tf.reduce_mean(q_re_test, axis=2)
 
         return q_re_train, q_mean_train, q_re_test, q_mean_test
@@ -147,7 +135,8 @@ class IQNAgent:
         if len(self.memory) > self.buffer_size:
             self.memory = self.memory[-self.buffer_size:]
 
-    def learn(self):
+    def learn(self, lr):
+        # lr: learning rate
         if self.iter % self.target_update_step:
             self.update_target_net()
 
@@ -158,7 +147,7 @@ class IQNAgent:
         bs_ = np.vstack(minibatch[:, 3])
         bd = np.vstack(minibatch[:, 4])
 
-        tau = np.random.rand(self.batch_size, self.num_tau_prime) # TODO: Change this for CVaR
+        tau = np.random.rand(self.batch_size, self.num_tau)
         tau_ = np.random.rand(self.batch_size, self.num_tau_prime)
         tau_beta_ = self.conditional_value_at_risk(self.eta, np.random.rand(self.batch_size, self.num_tau))
 
@@ -170,12 +159,9 @@ class IQNAgent:
         T_theta = br + (1 - bd) * self.gamma * T_theta_
         T_theta = T_theta.astype(np.float32)
 
-        loss, _ = self.sess.run([self.loss, self.train_op], {self.S: bs, self.A: ba, self.T: T_theta, self.tau: tau})
+        loss, _ = self.sess.run([self.loss, self.train_op], {self.S: bs, self.A: ba, self.T: T_theta, self.tau: tau, self.learning_rate: lr})
 
         self.iter += 1
-        
-        if self.eps > self.eps_min:
-            self.eps -= self.eps_max / self.e_step
 
         return loss
 
@@ -192,11 +178,11 @@ class IQNAgent:
     def conditional_value_at_risk(eta, tau):
         return eta * tau
 
-    def choose_action(self, state):
+    def choose_action(self, state, epsilon):
         state = state[np.newaxis, :]
         tau_K = np.random.rand(1, self.num_tau)
         tau_beta = self.conditional_value_at_risk(self.eta, tau_K)
-        if np.random.uniform() > self.eps:
+        if np.random.uniform() <= epsilon:
             actions_value, q_dist = self.sess.run([self.q_mean_eval_test, self.q_theta_eval_test],
                                                   feed_dict={self.S: state, self.tau: tau_beta})
             action = np.argmax(actions_value)

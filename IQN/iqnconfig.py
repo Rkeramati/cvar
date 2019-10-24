@@ -7,7 +7,7 @@ class Config():
         self.nS = nS # State dimension 
         self.nA = nA # Action dimension
 
-        self.num_tau = 32 # number of samples from base distribution
+        self.num_tau = 8 # number of samples from base distribution
         self.num_tau_prime = 8 # number of samples for next state estimate
 
         self.max_lr = 1e-3 # maximum learning rate
@@ -40,8 +40,7 @@ class Config():
         self.args = args # for input values
         self.eta = args.alpha # alpha added as an options
         self.gamma = args.gamma # Gamma added as an option
-        #if self.args.egreedy:
-        #    self.max_e, self.min_e, self.episode_ratio = self.schedule[self.args.option]
+        self.max_e, self.min_e, self.episode_ratio = self.schedule[self.args.option]
     def get_lr(self, ep):
         slope = (-self.max_lr + self.min_lr)/(self.args.num_episode/self.episode_ratio)
         alpha = max(self.min_lr, self.max_lr + ep *slope)

@@ -8,7 +8,7 @@ class HIVTreatment:
         np.random.seed(args.seed)
 
         st_pattern = {1: (0.1, 0.01, 0.5), 2: (0.1, 0.05, 0.1),\
-                3:(0, 0.01, 0), 4:(0.1, 0.01, 0), 5:(0.05, 0.01, 0.8)}
+                3:(0, 0.01, 0), 4:(0.1, 0.01, 0), 5:(0, 0, 0)}
 
         self.state_names = ("T1", "T1*", "T2", "T2*", "V", "E")
 
@@ -59,7 +59,7 @@ class HIVTreatment:
         #        eps2 *= (1-self.drop_value)
         ns = odeint(dsdt, self.state, [0, self.dt],
                      args=(eps1, eps2), mxstep=10000)[-1]
-        T1, T2, T1s, T2s, V, E = ns
+        _, _, _, _, V, E = ns
         self.state = ns.copy()
 
         # the reward function penalizes treatment because of side-effects
