@@ -32,18 +32,18 @@ parser.add_argument("--hour", type=int, default=2, help="Simulation hour")
 parser.add_argument("--seed", type=int, default=2, help="random seed number")
 parser.add_argument("--gamma", type=float, default=0.999, help="Discount Factor")
 parser.add_argument("--num_episode", type=int, default=1000, help="Number of episodes")
-parser.add_argument("--delta_state", type=float, default=0.0, help="stochasticity in the state")
-parser.add_argument("--action_sigma",type=float, default=0.0, help="action stochasticity")
+#parser.add_argument("--delta_state", type=float, default=0.0, help="stochasticity in the state")
+#parser.add_argument("--action_sigma",type=float, default=0.0, help="action stochasticity")
 parser.add_argument("--ifCVaR", type=bool, default=False, help="if optimize for CVaR")
-parser.add_argument("--alpha", type=float, default=0.25, help="CVaR risk value")
-parser.add_argument("--action_delay", type=int, default=0, help="maximum number of steps to delay the action")
+#parser.add_argument("--alpha", type=float, default=0.25, help="CVaR risk value")
+#parser.add_argument("--action_delay", type=int, default=0, help="maximum number of steps to delay the action")
 parser.add_argument("--e_greedy", type=bool, default=False, help="if e-greedy")
 parser.add_argument("--opt", type=float, default=1.0, help="optimism")
 parser.add_argument("--patient", type=int, default=1, help="which patient")
 parser.add_argument("--e_greedy_option", type=int, default=1, help="Which schedule to use for e-greedy")
-parser.add_argument("--decay", type=bool, default=False, help="If use exponential decay")
+#parser.add_argument("--decay", type=bool, default=False, help="If use exponential decay")
 
-PATIENTS = {1: "adult#003", 2: "adult#002", 3: "adult#003", 4: "adult#007"\
+PATIENTS = {1: "adult#003", 2: "adult#002", 3: "adult#003", 4: "adult#007",\
             5:"adolescent#002", 6:"adolescent#007",\
             7: "child#001", 8: "child#002", 9: "child#007"}
 
@@ -59,8 +59,8 @@ def make_env(args):
     )
     # Check if delay make sense:
     env = gym.make('simglucose-custom-v0')
-    if minDiff(env.env.sensor.sample_time) <= args.action_delay:
-        raise Exception("Too much delay in action, forget a whole meal!")
+    #if minDiff(env.env.sensor.sample_time) <= args.action_delay:
+    #    raise Exception("Too much delay in action, forget a whole meal!")
 
     return env
 
@@ -94,7 +94,7 @@ def run(args):
         if ep%Config.eval_episode == 0:
             epsilon=0
         else:
-            epsilon = Config.get_epsilon(ep, args.decay)
+            epsilon = Config.get_epsilon(ep)#, args.decay)
 
         episode_return = []
         meal = 0
@@ -105,17 +105,18 @@ def run(args):
             if np.random.rand() <= epsilon and args.e_greedy:
                 action_id = np.random.randint(Config.nA)
             else:
-                if Config.args.ifCVaR:
-                    o = np.expand_dims(observation, axis=-1)
-                    values = C51.CVaRopt(o, count=counts,\
-                            alpha=Config.args.alpha, N=Config.CVaRSamples, c=args.opt, bonus=0.0)
-                else:
-                    values = C51.Q(observation)
+                # if Config.args.ifCVaR:
+                #     o = np.expand_dims(observation, axis=-1)
+                #     values = C51.CVaRopt(o, count=counts,\
+                #             alpha=Config.args.alpha, N=Config.CVaRSamples, c=args.opt, bonus=0.0)
+                # else:
+                values = C51.Q(observation)
                 action_id = np.random.choice(np.flatnonzero(values == values.max()))
 
             action = Config.get_action(action_id) # get action with/ without randomness
 
-            delay = Config.get_delay()
+            # delay = Config.get_delay()
+            delay = 0
             next_observation, reward, terminal, info, num_step, BGs, Risks = custom_step(env,\
                     action, step, Config.max_step, delay, BGs, Risks, ep)
 

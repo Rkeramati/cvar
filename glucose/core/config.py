@@ -37,9 +37,9 @@ class config():
 
         self.max_e, self.min_e, self.episode_ratio = self.schedule[args.e_greedy_option]
 
-        self.exp_decay = {1: [0.9, 0.99, 5], 2:[0.9, 0.99, 20], 3:[0.9, 0.99, 2],\
-                        3: [0.9, 0.99, 30], 4:[0.5, 0.99, 5]}
-        self.start_e, self.decay, self.decay_step = self.exp_decay[args.e_greedy_option]
+        # self.exp_decay = {1: [0.9, 0.99, 5], 2:[0.9, 0.99, 20], 3:[0.9, 0.99, 2],\
+        #                 4: [0.9, 0.99, 30], 5:[0.5, 0.99, 5]}
+        # self.start_e, self.decay, self.decay_step = self.exp_decay[args.e_greedy_option]
 
         self.nS = self.state_bin * self.meal_bin
         self.bin_size = (self.max_state - 0)/self.state_bin
@@ -63,28 +63,28 @@ class config():
         return alpha
 
     def get_epsilon(self, ep, decay=False):
-        if not decay:
-            slope = (-self.max_e + self.min_e)/(self.args.num_episode/self.episode_ratio)
-            e = max(self.min_e, self.max_e + ep *slope)
-        else:
-            e = self.start_e * self.decay**(ep/self.decay_step)
+        # if not decay:
+        slope = (-self.max_e + self.min_e)/(self.args.num_episode/self.episode_ratio)
+        e = max(self.min_e, self.max_e + ep *slope)
+        # else:
+            #e = self.start_e * self.decay**(ep/self.decay_step)
         return e
 
     def get_action(self, action_id):
         total_action = [0, 0]
         action = self.action_map[action_id, :]
-        total_action[0] = action[0] + np.random.normal(0, self.args.action_sigma)
+        total_action[0] = action[0] #+ np.random.normal(0, self.args.action_sigma)
         return total_action
 
     def process(self, state, meal):
 
         state = min(int(state.CGM/self.bin_size), self.state_bin)
         # Randomize the state observation
-        if np.random.rand() <= self.args.delta_state:
-            if np.random.rand() <= 0.5:
-                state = max(0, state - 1)
-            else:
-                state = min(self.state_bin, state + 1)
+        # if np.random.rand() <= self.args.delta_state:
+        #     if np.random.rand() <= 0.5:
+        #         state = max(0, state - 1)
+        #     else:
+        #         state = min(self.state_bin, state + 1)
         meal = min(int(meal/self.meal_size), self.meal_bin)
         idx = state + meal * self.meal_bin #state idx given mean and state
         return idx
