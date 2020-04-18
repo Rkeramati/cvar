@@ -37,7 +37,7 @@ parser.add_argument("--num_episode", type=int, default=1000, help="Number of epi
 parser.add_argument("--ifCVaR", type=bool, default=False, help="if optimize for CVaR")
 #parser.add_argument("--alpha", type=float, default=0.25, help="CVaR risk value")
 #parser.add_argument("--action_delay", type=int, default=0, help="maximum number of steps to delay the action")
-parser.add_argument("--e_greedy", type=bool, default=False, help="if e-greedy")
+parser.add_argument("--e_greedy", type=bool, default=True, help="if e-greedy")
 parser.add_argument("--opt", type=float, default=1.0, help="optimism")
 parser.add_argument("--patient", type=int, default=1, help="which patient")
 parser.add_argument("--e_greedy_option", type=int, default=1, help="Which schedule to use for e-greedy")
@@ -71,7 +71,9 @@ def run(args):
     Config.max_step = int(args.hour*60/(env.env.sensor.sample_time)) # Compute the max step
 
     if args.load_name is not None:
-        load_file = pickle.load(open(args.load_name + '.p'), 'rb')
+        load_file = pickle.load(open(args.load_name + '.p', 'rb'))
+        Risks = load_file["Risks"]
+        BGs = load_file["BGs"]
         replay_buffer = replay.Replay(Config, load=True, name=args.load_name)
         C51 = drl.C51(Config, ifCVaR=Config.args.ifCVaR, p=load_file["p"], memory=replay_buffer)
         returns = load_file["returns"]
@@ -143,6 +145,8 @@ def run(args):
         if ep% Config.save_episode == 0:
             save_file = {'p': C51.p, 'ep': ep, 'returns': returns, 'BGs': BGs, 'Risks': Risks}
             pickle.dump(save_file, open(args.save_name + '.p', 'wb'))
+            replay_buffer.save(args.save_name)
+
 
 if __name__ == "__main__":
     args = parser.parse_args()

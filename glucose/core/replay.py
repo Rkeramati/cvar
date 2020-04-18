@@ -54,7 +54,7 @@ class Replay():
         self.rewards = load['rewards']
         self.states = load['states']
         self.terminals = load['terminals']
-        self.count = load['counts']; self.current = load['current']
+        self.count = load['count']; self.current = load['current']
 
         print("Replay buffer load")
 
